@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/websearch-websearchapi-custom.cjs\"",
+            "timeout": 120
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/webfetch-websearchapi-scraper.cjs\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "WEBSEARCHAPI_API_KEY": "YOUR_KEY_OR_KEY1|KEY2|KEY3_OR_/ABSOLUTE/PATH/TO/apikey.json_OR_/ABSOLUTE/PATH/TO/apikeys.txt",
+    "WEBSEARCHAPI_MAX_RESULTS": "10",
+    "WEBSEARCHAPI_INCLUDE_CONTENT": "1",
+    "WEBSEARCHAPI_COUNTRY": "us",
+    "WEBSEARCHAPI_LANGUAGE": "en",
+    "WEBFETCH_SCRAPER_RETURN_FORMAT": "markdown",
+    "WEBFETCH_SCRAPER_ENGINE": "browser"
+  }
+}

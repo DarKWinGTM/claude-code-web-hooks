@@ -1,0 +1,7 @@
+backups/
+*.log
+apikey.json
+apikeys.txt
+.claude/
+node_modules/
+.DS_Store

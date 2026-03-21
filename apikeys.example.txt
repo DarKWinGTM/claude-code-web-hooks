@@ -1,0 +1,4 @@
+# One API key per line
+# Lines starting with # are ignored
+YOUR_WEBSEARCHAPI_KEY_1
+YOUR_WEBSEARCHAPI_KEY_2
