@@ -26,6 +26,9 @@ Two concrete problems were observed:
 1. **WebSearch incompatibility** for some non-native model/runtime paths, especially when the IDE can emit native WebSearch intent but the upstream provider/model path cannot execute it correctly
 2. **WebFetch limitations** on CSR-heavy pages, where a simple fetch can retrieve HTML but still miss the rendered content the user actually needs
 
+A particularly important practical case is **custom endpoint usage**.
+Claude Code can still issue search/fetch tool intent, but a custom endpoint may not support the same server-side search process or tool lifecycle assumptions as Claude’s native stack. In that situation, native tool intent exists, but the custom endpoint path cannot complete the expected search process server-side.
+
 A gateway like 9router can sometimes emulate or intercept parts of this behavior, but the root interaction point for these two features is often the **IDE/runtime client tool lifecycle** rather than the HTTP gateway lifecycle.
 
 ---
@@ -41,6 +44,15 @@ Provide a reusable standalone hook layer that can be installed directly into Cla
 - Preserve native Claude Code behavior as the default fallback when custom logic should not take over
 - Make interception deterministic and easy to reason about
 - Keep install/removal simple
+- Keep the architecture open to future search-provider substitution without changing the Claude Code hook model
+
+### Current provider scope
+Current implementation scope is intentionally narrow:
+- WebSearch path = WebSearchAPI.ai
+- WebFetch scraper path = WebSearchAPI.ai
+
+This is a current implementation decision, not a claim that WebSearchAPI.ai must be the only provider forever.
+If a stronger provider is identified later, provider selection can be expanded while keeping the same runtime-hook architecture.
 
 ---
 

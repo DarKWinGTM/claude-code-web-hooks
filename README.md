@@ -6,6 +6,30 @@ Standalone hook-tool project for **Claude Code** that augments two built-in tool
 
 This project is intentionally designed for **Claude Code only**. It relies on Claude Code hook events such as `PreToolUse`, so it should be treated as a Claude Code runtime integration rather than a general gateway/server feature.
 
+### Why this tool exists
+This project solves a practical gap that appears when Claude Code is used with **custom endpoints** or third-party model paths.
+
+In those environments, Claude Code may still emit native `WebSearch` or `WebFetch` intent, but the upstream path may not support the same server-side search/process behavior that Claude’s native stack expects.
+
+As a result, users can hit problems such as:
+- native `WebSearch` not working correctly through a custom endpoint
+- provider/model paths that cannot complete the expected Claude Code search process server-side
+- `WebFetch` returning template-heavy or CSR-heavy HTML that is technically reachable but not actually usable as readable content
+
+### What capability this adds
+This tool increases the practical usefulness of Claude Code in two ways:
+
+#### WebSearch capability uplift
+- adds a search substitution path when server-side/native search processing is not available through the custom endpoint
+- preserves native Claude Code behavior when the custom path should not take over
+- avoids dead-end failures by falling back instead of trapping the user in a broken custom search path
+
+#### WebFetch capability uplift
+- adds a pre-check layer before fetch execution
+- distinguishes fetch-readable pages from template-heavy or browser-render-required pages
+- escalates to scraper fallback only when needed
+- preserves native fetch when the simpler path is already good enough
+
 ---
 
 ## What this project does
@@ -21,6 +45,33 @@ This project is intentionally designed for **Claude Code only**. It relies on Cl
 - Detects template-heavy / portal-heavy / browser-render-required pages
 - Uses WebSearchAPI scraper fallback only when needed
 - Falls through to native WebFetch when custom execution is unavailable or unsuccessful
+
+### Current provider targeting
+Current implementation target:
+- **WebSearchAPI.ai only**
+
+This is an intentional implementation choice for the current version.
+
+Planned direction:
+- the project should remain open to supporting other search APIs in the future
+- if a better search provider is identified later, the provider layer can be extended without changing the core Claude Code hook model
+- in other words, the current version is **provider-specific in implementation**, but **provider-agnostic in architecture direction**
+
+### Current provider plan snapshot
+The current planning context for WebSearchAPI.ai is:
+
+| Plan | Price | Search Credits | Notes |
+|------|------:|---------------:|-------|
+| Free | $0/mo | 2,000/mo | Basic search capabilities |
+| Pro | $189/mo | 50,000/mo | More search power for growing usage |
+| Expert | $1250/mo | 500,000/mo | Higher-scale usage, custom rate limits, volume discounts, SLAs/MSAs |
+
+Common capability notes from the current plan snapshot:
+- content extraction
+- localization (country and language)
+- higher tiers can include rate-limit and enterprise-style options
+
+This table is a **current planning note**, not a permanent contract. The implementation may change later if pricing, reliability, or capability trade-offs make another provider a better fit.
 
 ---
 

@@ -35,6 +35,9 @@
 - Added a shared failure-policy helper used by both WebSearch and WebFetch hooks
 - Expanded WebSearch native fallback policy to include auth, credit/quota, and transient provider failures so custom-path failures do not unnecessarily block native tool flow
 - Switched the shared failure policy to fully permissive mode so unknown provider failures also fall through to native tool behavior
+- Expanded README and design wording to explain that the project increases practical WebSearch/WebFetch capability and addresses custom-endpoint cases where Claude Code cannot complete the expected search process server-side
+- Added explicit documentation that the current implementation targets WebSearchAPI.ai only, while preserving the architectural option to support other search APIs later
+- Added a current provider plan snapshot in the README as a non-binding planning reference
 
 ### Decision notes
 - The project is positioned as a **client runtime hook layer**, not a gateway feature
