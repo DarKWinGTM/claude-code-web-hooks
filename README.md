@@ -115,20 +115,15 @@ In the current version, **all four classes allow native fallback**.
 
 ## GitHub flow diagram
 
-```text
-Claude Code tool event
-  ↓
-PreToolUse hook
-  ↓
-Classify request / provider state
-  ↓
-If custom path is appropriate
-  → execute custom path
-  → success: return custom result
-  → failure: allow native Claude Code tool
-  ↓
-If custom path is not appropriate
-  → allow native Claude Code tool
+```mermaid
+flowchart TD
+  A[Claude Code tool event] --> B[PreToolUse hook]
+  B --> C{Should custom path take over?}
+  C -->|No| D[Allow native Claude Code tool]
+  C -->|Yes| E[Execute custom path]
+  E --> F{Custom path succeeded?}
+  F -->|Yes| G[Return custom result]
+  F -->|No| D
 ```
 
 ---
