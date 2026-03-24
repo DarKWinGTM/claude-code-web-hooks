@@ -281,19 +281,30 @@ Notes:
 - if one key fails, the next key is tried automatically
 
 ### 3) Optional env variables
-Recommended examples:
+Recommended example for the **current implementation**:
 
-> Important: Tavily does **not** use `WEBSEARCHAPI_API_KEY`.
-> Use `TAVILY_API_KEY` for Tavily provider authentication.
+> Important:
+> - Tavily does **not** use `WEBSEARCHAPI_API_KEY`
+> - use `TAVILY_API_KEY` for Tavily authentication
+> - current default behavior in code is already:
+>   - `CLAUDE_WEB_HOOKS_SEARCH_MODE=parallel`
+>   - `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS=tavily,websearchapi`
+> - you can still set them explicitly if you want the config to be self-documenting
 
 ```json
 {
   "env": {
+    "CLAUDE_WEB_HOOKS_SEARCH_MODE": "parallel",
+    "CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS": "tavily,websearchapi",
     "WEBSEARCHAPI_API_KEY": "/absolute/path/to/apikeys.txt",
+    "TAVILY_API_KEY": "/absolute/path/to/tavily-keys.txt",
     "WEBSEARCHAPI_MAX_RESULTS": "10",
     "WEBSEARCHAPI_INCLUDE_CONTENT": "1",
     "WEBSEARCHAPI_COUNTRY": "us",
     "WEBSEARCHAPI_LANGUAGE": "en",
+    "TAVILY_SEARCH_DEPTH": "advanced",
+    "TAVILY_MAX_RESULTS": "10",
+    "TAVILY_TOPIC": "general",
     "WEBFETCH_SCRAPER_RETURN_FORMAT": "markdown",
     "WEBFETCH_SCRAPER_ENGINE": "browser",
     "CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT": "55",
@@ -301,6 +312,16 @@ Recommended examples:
   }
 }
 ```
+
+What these keys do:
+- `CLAUDE_WEB_HOOKS_SEARCH_MODE`: search provider execution mode (`single`, `fallback`, `parallel`)
+- `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS`: provider order for the search policy layer
+- `WEBSEARCHAPI_API_KEY`: WebSearchAPI.ai key / key pool / key file path
+- `TAVILY_API_KEY`: Tavily key / key pool / key file path
+- `TAVILY_SEARCH_DEPTH`, `TAVILY_MAX_RESULTS`, `TAVILY_TOPIC`: Tavily Search tuning
+- `WEBFETCH_SCRAPER_*`: WebFetch scraper fallback behavior
+- `CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT`: shared default timeout for search providers
+- `CLAUDE_WEB_HOOKS_DEBUG`: debug logging for the hook layer
 
 ---
 
