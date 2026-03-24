@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/websearch-websearchapi-custom.cjs\"",
+            "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/websearch-custom.cjs\"",
             "timeout": 120
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/webfetch-websearchapi-scraper.cjs\"",
+            "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/webfetch-scraper.cjs\"",
             "timeout": 120
           }
         ]
@@ -24,12 +24,20 @@
     ]
   },
   "env": {
+    "CLAUDE_WEB_HOOKS_SEARCH_MODE": "parallel",
+    "CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS": "tavily,websearchapi",
     "WEBSEARCHAPI_API_KEY": "YOUR_KEY_OR_KEY1|KEY2|KEY3_OR_/ABSOLUTE/PATH/TO/apikey.json_OR_/ABSOLUTE/PATH/TO/apikeys.txt",
+    "TAVILY_API_KEY": "tvly-YOUR_TAVILY_KEY_OR_/ABSOLUTE/PATH/TO/tavily-keys.txt",
     "WEBSEARCHAPI_MAX_RESULTS": "10",
     "WEBSEARCHAPI_INCLUDE_CONTENT": "1",
     "WEBSEARCHAPI_COUNTRY": "us",
     "WEBSEARCHAPI_LANGUAGE": "en",
+    "TAVILY_SEARCH_DEPTH": "advanced",
+    "TAVILY_MAX_RESULTS": "10",
+    "TAVILY_TOPIC": "general",
     "WEBFETCH_SCRAPER_RETURN_FORMAT": "markdown",
-    "WEBFETCH_SCRAPER_ENGINE": "browser"
+    "WEBFETCH_SCRAPER_ENGINE": "browser",
+    "CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT": "55",
+    "CLAUDE_WEB_HOOKS_DEBUG": "0"
   }
 }

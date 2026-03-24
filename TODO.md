@@ -1,6 +1,6 @@
 # Claude Code Web Hooks - TODO
 
-> **Last Updated:** 2026-03-20
+> **Last Updated:** 2026-03-24
 
 ---
 
@@ -21,8 +21,8 @@
 
 ### Documentation / Planning
 - [ ] Refine standalone project scope and installation model
-- [ ] Decide final file layout for `hooks/`, `src/`, and `install/`
-- [ ] Define configuration strategy for user-scope vs project-scope installation
+- [x] Decide final file layout for `hooks/`, `src/`, and `install/`
+- [x] Define configuration strategy for user-scope vs project-scope installation
 
 ### Extraction / Implementation
 - [ ] Extract current WebSearch hook into project-owned implementation files
@@ -37,6 +37,14 @@
 - [x] Add domain heuristics for better WebFetch scrape escalation decisions
 - [x] Add tests or repeatable verification flow for hook decision branches
 
+### Multi-provider roadmap
+- [x] Add search provider abstraction layer
+- [x] Add Tavily Search adapter
+- [x] Add search provider policy config (`single` / `fallback` / `parallel`)
+- [x] Wire WebSearch flow to use provider policy instead of hardcoded single-provider routing
+- [x] Normalize Tavily Search responses into the project’s shared search-result format
+- [x] Extend verify coverage for multi-provider search behavior
+
 ### Release readiness checklist
 - [x] Add `.gitignore`
 - [x] Add `LICENSE`
@@ -44,10 +52,10 @@
 - [x] Add Claude Code flow diagram to README
 - [x] Add fixtures directory for verification
 - [x] Add `verify.sh`
-- [ ] Review repository text for any remaining machine-specific paths that should stay placeholder/generic in public release
+- [x] Review repository text for any remaining machine-specific paths that should stay placeholder/generic in public release
 - [ ] Decide whether to keep or remove direct host heuristics before public release
-- [ ] Create repository and push when ready
-- [ ] Create first tagged release when ready
+- [x] Create repository and push when ready
+- [x] Create first tagged release when ready
 
 ---
 

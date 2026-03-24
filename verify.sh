@@ -5,8 +5,12 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 printf '== Syntax checks ==\n'
 node --check "${PROJECT_DIR}/hooks/shared/failure-policy.cjs"
-node --check "${PROJECT_DIR}/hooks/websearch-websearchapi-custom.cjs"
-node --check "${PROJECT_DIR}/hooks/webfetch-websearchapi-scraper.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/search-provider-contract.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/search-provider-policy.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/search-providers/websearchapi.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/search-providers/tavily.cjs"
+node --check "${PROJECT_DIR}/hooks/websearch-custom.cjs"
+node --check "${PROJECT_DIR}/hooks/webfetch-scraper.cjs"
 bash -n "${PROJECT_DIR}/install.sh"
 bash -n "${PROJECT_DIR}/uninstall.sh"
 
@@ -20,7 +24,7 @@ const path = require('path');
 const vm = require('vm');
 const { createRequire } = require('module');
 const projectDir = process.env.PROJECT_DIR_ENV;
-const hookPath = path.join(projectDir, 'hooks/webfetch-websearchapi-scraper.cjs');
+const hookPath = path.join(projectDir, 'hooks/webfetch-scraper.cjs');
 const code = fs.readFileSync(hookPath, 'utf8');
 const hookRequire = createRequire(hookPath);
 const sandbox = {
@@ -61,6 +65,17 @@ const out = checks.map((error) => ({ error, class: classifyProviderFailure(error
 console.log(JSON.stringify(out, null, 2));
 if (!out.every((item) => item.allow === true)) {
   throw new Error('failure policy is not fully permissive');
+}
+NODE
+
+printf '\n== Search provider policy check ==\n'
+PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
+const { executeSearchProviderPolicy } = require(`${process.env.PROJECT_DIR_ENV}/hooks/shared/search-provider-policy.cjs`);
+console.log(JSON.stringify({
+  available: typeof executeSearchProviderPolicy === 'function'
+}, null, 2));
+if (typeof executeSearchProviderPolicy !== 'function') {
+  throw new Error('search provider policy helper not available');
 }
 NODE
 

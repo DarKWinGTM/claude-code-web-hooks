@@ -4,11 +4,16 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_HOOK_DIR="${HOME}/.claude/hooks"
 TARGET_SHARED_DIR="${TARGET_HOOK_DIR}/shared"
+TARGET_SEARCH_PROVIDER_DIR="${TARGET_SHARED_DIR}/search-providers"
 TARGET_SETTINGS="${HOME}/.claude/settings.json"
 BACKUP_DIR="${PROJECT_DIR}/backups"
-WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-websearchapi-custom.cjs"
-WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-websearchapi-scraper.cjs"
+WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-custom.cjs"
+WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-scraper.cjs"
 FAILURE_POLICY_DST="${TARGET_SHARED_DIR}/failure-policy.cjs"
+SEARCH_PROVIDER_CONTRACT_DST="${TARGET_SHARED_DIR}/search-provider-contract.cjs"
+SEARCH_PROVIDER_POLICY_DST="${TARGET_SHARED_DIR}/search-provider-policy.cjs"
+WEBSEARCHAPI_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/websearchapi.cjs"
+TAVILY_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/tavily.cjs"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "${BACKUP_DIR}"
@@ -28,8 +33,8 @@ if (settings.hooks && Array.isArray(settings.hooks.PreToolUse)) {
       .filter((hook) => hook && hook.type === 'command' && typeof hook.command === 'string')
       .map((hook) => hook.command);
 
-    const ownsWebSearch = entry.matcher === 'WebSearch' && commands.some((cmd) => cmd.includes('websearch-websearchapi-custom.cjs'));
-    const ownsWebFetch = entry.matcher === 'WebFetch' && commands.some((cmd) => cmd.includes('webfetch-websearchapi-scraper.cjs'));
+    const ownsWebSearch = entry.matcher === 'WebSearch' && commands.some((cmd) => cmd.includes('websearch-custom.cjs'));
+    const ownsWebFetch = entry.matcher === 'WebFetch' && commands.some((cmd) => cmd.includes('webfetch-scraper.cjs'));
     return !(ownsWebSearch || ownsWebFetch);
   });
 }
@@ -38,13 +43,18 @@ fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8')
 NODE
 fi
 
-rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}"
+rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}"
 
 printf 'Removed hooks if present:\n'
 printf '  - %s\n' "${WEBSEARCH_DST}"
 printf '  - %s\n' "${WEBFETCH_DST}"
-printf 'Removed shared helper if present:\n'
+printf 'Removed shared helpers if present:\n'
 printf '  - %s\n' "${FAILURE_POLICY_DST}"
+printf '  - %s\n' "${SEARCH_PROVIDER_CONTRACT_DST}"
+printf '  - %s\n' "${SEARCH_PROVIDER_POLICY_DST}"
+printf 'Removed provider adapters if present:\n'
+printf '  - %s\n' "${WEBSEARCHAPI_PROVIDER_DST}"
+printf '  - %s\n' "${TAVILY_PROVIDER_DST}"
 if [ -f "${TARGET_SETTINGS}" ]; then
   printf 'Updated settings:\n'
   printf '  - %s\n' "${TARGET_SETTINGS}"

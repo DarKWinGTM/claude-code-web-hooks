@@ -3,7 +3,7 @@
 > **Current Version:** 0.1.0
 > **Project:** Claude Code Web Hooks
 > **Status:** Draft
-> **Last Updated:** 2026-03-20
+> **Last Updated:** 2026-03-24
 
 ---
 
@@ -47,12 +47,17 @@ Provide a reusable standalone hook layer that can be installed directly into Cla
 - Keep the architecture open to future search-provider substitution without changing the Claude Code hook model
 
 ### Current provider scope
-Current implementation scope is intentionally narrow:
-- WebSearch path = WebSearchAPI.ai
+Current implementation scope is now split by role:
+- WebSearch path = WebSearchAPI.ai + Tavily Search
 - WebFetch scraper path = WebSearchAPI.ai
 
-This is a current implementation decision, not a claim that WebSearchAPI.ai must be the only provider forever.
+This is a current implementation decision, not a claim that this provider set is final forever.
 If a stronger provider is identified later, provider selection can be expanded while keeping the same runtime-hook architecture.
+
+### Current implementation goal update
+The current implementation goal is:
+- complete **Tavily Search** integration as part of a configurable multi-provider search architecture
+- keep WebFetch extraction on the current stable path until a later extract-provider expansion phase is justified
 
 ---
 
@@ -183,6 +188,29 @@ Current policy:
 
 Current mode: **fully permissive fallback**
 
+### Multi-provider direction
+The next architectural step is to separate provider policy from provider implementation.
+
+Recommended future split:
+- search provider adapters
+  - WebSearchAPI.ai Search
+  - Tavily Search
+- extraction provider adapters
+  - WebSearchAPI.ai Scrape
+  - Tavily Extract (future candidate)
+- provider policy layer
+  - `single`
+  - `fallback`
+  - `parallel`
+
+Current default after Tavily Search integration:
+- `WebSearch`: `parallel`
+  - provider order: `tavily,websearchapi`
+  - if one succeeds, the hook returns the first successful normalized result
+  - if both fail, native Claude Code WebSearch remains the final fallback
+
+This keeps the project resilient while preferring provider redundancy before native fallback.
+
 ---
 
 ## Installation Model
@@ -213,8 +241,8 @@ claude-code-web-hooks/
   TODO.md
   settings.example.json
   hooks/
-    websearch-websearchapi-custom.cjs
-    webfetch-websearchapi-scraper.cjs
+    websearch-custom.cjs
+    webfetch-scraper.cjs
     shared/
       failure-policy.cjs
   install/
@@ -226,8 +254,8 @@ Current scaffold now includes:
 - `changelog.md`
 - `TODO.md`
 - `settings.example.json`
-- `hooks/websearch-websearchapi-custom.cjs`
-- `hooks/webfetch-websearchapi-scraper.cjs`
+- `hooks/websearch-custom.cjs`
+- `hooks/webfetch-scraper.cjs`
 
 ---
 
@@ -246,8 +274,8 @@ Do not blindly replace the whole settings file; merge the `hooks.PreToolUse` ent
 
 ### 4) Update the example command paths
 Replace:
-- `/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/websearch-websearchapi-custom.cjs`
-- `/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/webfetch-websearchapi-scraper.cjs`
+- `/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/websearch-custom.cjs`
+- `/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/webfetch-scraper.cjs`
 
 with the real absolute path on your machine.
 

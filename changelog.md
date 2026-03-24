@@ -3,7 +3,7 @@
 > **Current Version:** 0.1.0
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
-> **Last Updated:** 2026-03-20
+> **Last Updated:** 2026-03-24
 
 ---
 
@@ -38,6 +38,8 @@
 - Expanded README and design wording to explain that the project increases practical WebSearch/WebFetch capability and addresses custom-endpoint cases where Claude Code cannot complete the expected search process server-side
 - Added explicit documentation that the current implementation targets WebSearchAPI.ai only, while preserving the architectural option to support other search APIs later
 - Added a current provider plan snapshot in the README as a non-binding planning reference
+- Added Tavily Search adapter, provider abstraction, provider policy helper, and WebSearch multi-provider routing implementation in project source
+- Set the default search provider mode to `parallel` with provider order `tavily,websearchapi`
 
 ### Decision notes
 - The project is positioned as a **client runtime hook layer**, not a gateway feature
@@ -47,3 +49,5 @@
 ### Current state
 - Documentation scaffold created
 - Implementation extraction into this standalone project is not yet completed
+- Current next goal documented: add Tavily Search through a multi-provider search architecture
+- README now clarifies that Tavily uses `TAVILY_API_KEY` rather than `WEBSEARCHAPI_API_KEY`

@@ -35,9 +35,13 @@ This tool increases the practical usefulness of Claude Code in two ways:
 ## What this project does
 
 ### WebSearch hook
-- Uses WebSearchAPI.ai as a search substitution path when configured
+- Supports multiple search providers
+- Current built-in providers:
+  - WebSearchAPI.ai
+  - Tavily Search
 - Falls through to native Claude Code WebSearch when custom execution should not take over
 - Supports API key pools, file-based keys, and automatic next-key fallback
+- Supports provider policy modes such as `single`, `fallback`, and `parallel`
 
 ### WebFetch hook
 - Probes the initial HTML first
@@ -47,15 +51,17 @@ This tool increases the practical usefulness of Claude Code in two ways:
 - Falls through to native WebFetch when custom execution is unavailable or unsuccessful
 
 ### Current provider targeting
-Current implementation target:
-- **WebSearchAPI.ai only**
-
-This is an intentional implementation choice for the current version.
+Current implementation status:
+- **WebSearch** supports:
+  - WebSearchAPI.ai
+  - Tavily Search
+- **WebFetch** currently uses:
+  - WebSearchAPI.ai scraper fallback
 
 Planned direction:
 - the project should remain open to supporting other search APIs in the future
 - if a better search provider is identified later, the provider layer can be extended without changing the core Claude Code hook model
-- in other words, the current version is **provider-specific in implementation**, but **provider-agnostic in architecture direction**
+- in other words, the project is moving from **provider-specific implementation** toward **provider-agnostic architecture**
 
 ### Current provider plan snapshot
 The current planning context for WebSearchAPI.ai is:
@@ -84,12 +90,21 @@ If the custom path cannot complete successfully, it should not trap the user whe
 
 ### WebSearch
 Current behavior:
-- success → `class=search-substitution -> websearchapi`
-- no key → allow native WebSearch
+- success → `class=search-substitution -> <provider>`
+- no provider keys → allow native WebSearch
 - auth failure → allow native WebSearch
 - credit / quota failure → allow native WebSearch
 - transient provider failure → allow native WebSearch
 - unknown provider failure → allow native WebSearch
+
+Current provider policy modes:
+- `single`
+- `fallback`
+- `parallel` (**current default**)
+
+Current default order:
+- `tavily`
+- `websearchapi`
 
 ### WebFetch
 Current behavior:
@@ -149,10 +164,15 @@ claude-code-web-hooks/
     template-heavy.html
     browser-shell.html
   hooks/
-    websearch-websearchapi-custom.cjs
-    webfetch-websearchapi-scraper.cjs
+    websearch-custom.cjs
+    webfetch-scraper.cjs
     shared/
       failure-policy.cjs
+      search-provider-contract.cjs
+      search-provider-policy.cjs
+      search-providers/
+        websearchapi.cjs
+        tavily.cjs
 ```
 
 ---
@@ -169,7 +189,8 @@ cd claude-code-web-hooks
 
 What `install.sh` does:
 - copies hook files into `~/.claude/hooks/`
-- copies the shared helper into `~/.claude/hooks/shared/`
+- copies the shared helpers into `~/.claude/hooks/shared/`
+- copies the provider adapters into `~/.claude/hooks/shared/search-providers/`
 - backs up `~/.claude/settings.json` before editing
 - merges the required `PreToolUse -> WebSearch`
 - merges the required `PreToolUse -> WebFetch`
@@ -182,9 +203,10 @@ After install:
 ### Option 2 — manual install
 
 1. Copy the hook files into `~/.claude/hooks/`
-2. Copy `hooks/shared/failure-policy.cjs` into `~/.claude/hooks/shared/`
-3. Merge the `hooks` block from `settings.example.json` into `~/.claude/settings.json`
-4. Add the env variables you want to use
+2. Copy the shared helpers into `~/.claude/hooks/shared/`
+3. Copy the provider adapters into `~/.claude/hooks/shared/search-providers/`
+4. Merge the `hooks` block from `settings.example.json` into `~/.claude/settings.json`
+5. Add the env variables you want to use
 
 ---
 
@@ -211,6 +233,10 @@ Use `settings.example.json` as the base example.
 The hook commands should point to the real installed paths under `~/.claude/hooks/` after running `install.sh`.
 
 ### 2) Configure API keys
+The project currently uses **separate provider keys**:
+- `WEBSEARCHAPI_API_KEY` for WebSearchAPI.ai
+- `TAVILY_API_KEY` for Tavily
+
 `WEBSEARCHAPI_API_KEY` supports:
 
 #### A. Single inline key
@@ -257,6 +283,9 @@ Notes:
 ### 3) Optional env variables
 Recommended examples:
 
+> Important: Tavily does **not** use `WEBSEARCHAPI_API_KEY`.
+> Use `TAVILY_API_KEY` for Tavily provider authentication.
+
 ```json
 {
   "env": {
@@ -286,7 +315,7 @@ Recommended examples:
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/home/your-user/.claude/hooks/websearch-websearchapi-custom.cjs\"",
+            "command": "node \"/home/your-user/.claude/hooks/websearch-custom.cjs\"",
             "timeout": 120
           }
         ]
@@ -296,7 +325,7 @@ Recommended examples:
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/home/your-user/.claude/hooks/webfetch-websearchapi-scraper.cjs\"",
+            "command": "node \"/home/your-user/.claude/hooks/webfetch-scraper.cjs\"",
             "timeout": 120
           }
         ]
