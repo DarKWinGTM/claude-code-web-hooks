@@ -41,7 +41,7 @@ This tool increases the practical usefulness of Claude Code in two ways:
   - Tavily Search
 - Falls through to native Claude Code WebSearch when custom execution should not take over
 - Supports API key pools, file-based keys, and automatic next-key fallback
-- Supports provider policy modes such as `single`, `fallback`, and `parallel`
+- Supports provider policy modes such as `fallback` and `parallel`
 
 ### WebFetch hook
 - Probes the initial HTML first
@@ -55,6 +55,7 @@ Current implementation status:
 - **WebSearch** supports:
   - WebSearchAPI.ai
   - Tavily Search
+  - Exa Search
 - **WebFetch** currently uses:
   - WebSearchAPI.ai scraper fallback
 
@@ -64,6 +65,8 @@ Planned direction:
 - in other words, the project is moving from **provider-specific implementation** toward **provider-agnostic architecture**
 
 ### Current provider plan snapshot
+
+#### WebSearchAPI.ai
 The current planning context for WebSearchAPI.ai is:
 
 | Plan | Price | Search Credits | Notes |
@@ -77,7 +80,69 @@ Common capability notes from the current plan snapshot:
 - localization (country and language)
 - higher tiers can include rate-limit and enterprise-style options
 
-This table is a **current planning note**, not a permanent contract. The implementation may change later if pricing, reliability, or capability trade-offs make another provider a better fit.
+#### Tavily
+The current pricing context for Tavily is:
+
+| Plan | Price | API Credits | Notes |
+|------|------:|------------:|-------|
+| Researcher | $0/mo | 1,000/mo | Free tier for new creators, no credit card required |
+| Pay As You Go | $0.008/credit | usage-based | Flexible usage, cancel anytime |
+| Project | $30/mo | 4,000/mo | Higher rate limits for enthusiasts |
+| Enterprise | Custom | Custom | Custom rate limits, enterprise support, security/privacy |
+
+Practical usage notes from the current Tavily pricing page:
+- credits are used across Tavily capabilities such as search, extract, and crawl
+- monthly included credits reset on the first day of the month
+- if credits run out, requests stop until credits reset or the plan changes
+- the API key is obtained from the Tavily dashboard after sign-up
+- the pricing page also mentions a student offering and email support on non-enterprise plans
+
+These tables are **current planning notes**, not permanent contracts. The implementation may change later if pricing, reliability, or capability trade-offs make another provider a better fit.
+
+### Practical provider comparison for this repository
+
+| Provider | Best fit in this repo | Search | Extract / Scrape | Fallback role | Cost profile | Notes |
+|---------|------------------------|--------|------------------|---------------|--------------|-------|
+| WebSearchAPI.ai | balanced default for current WebSearch + current WebFetch scraper | Yes | Yes | strong primary + secondary fallback | predictable monthly plans | one provider can currently cover both search and scrape paths |
+| Tavily | strong search provider for Claude Code custom-endpoint workflows | Yes | Extract exists, but not yet wired here | strong search fallback / parallel provider | lower entry cost and clear PAYG path | currently integrated for search in this project |
+| Exa | promising future search provider candidate | Yes | Yes (`Contents`) | likely future search provider candidate | request-based pricing; deeper modes cost more | strongest value if we want richer search modes and content retrieval later |
+
+### Comparison notes
+- **WebSearchAPI.ai** is currently the broadest fit for the project because the current implementation already uses it for both WebSearch substitution and WebFetch scraper fallback.
+- **Tavily** is currently the most practical second search provider because its Search and Extract APIs are clearly separated and its pricing/entry path are straightforward.
+- **Exa** looks like a serious next candidate for the search layer because it has search-focused API products plus dedicated content retrieval, but it should be integrated through the same provider abstraction layer rather than added ad hoc.
+
+### Exa.ai candidate research
+
+Exa looks viable as an additional **search API provider** for this project.
+
+#### Relevant Exa capabilities
+- `Search` endpoint for web search results and their contents
+- `Agentic Search` / deeper search modes for structured/deeper search workflows
+- `Contents` endpoint for page-content retrieval
+- `Answer` endpoint for direct answers with citations
+- `Research` product for autonomous research tasks
+
+#### Why Exa is interesting here
+- it has a search-first API surface that maps naturally to the project’s provider-abstraction direction
+- it has dedicated content retrieval pricing (`Contents`) that could matter later if the project expands beyond pure search substitution
+- docs show explicit search parameters like result count, domains, country, and content inclusion, which fits the current hook model well
+
+#### Exa pricing snapshot (current planning note)
+- Free usage: up to **1,000 requests/month**
+- Search: **$7 / 1k requests** for **1–10 results**, **+$1 / 1k** additional results beyond 10
+- Agentic Search: **$12 / 1k requests**
+- Agentic Search with reasoning: **+$3 / 1k requests** on top of that mode
+- Contents: **$1 / 1k pages per content type**
+- Answer: **$5 / 1k answers**
+- Research: priced separately around agent-style operations / page reads / reasoning-token usage
+
+#### Practical Exa notes for this repo
+- Exa currently looks more attractive as a **future search-layer provider** than as an immediate WebFetch replacement.
+- If Exa is added, the clean path is:
+  - add an Exa search adapter behind the shared search-provider policy
+  - keep WebFetch extractor work separate unless there is a deliberate extract-provider expansion phase
+- Exa should not be added by bypassing the provider abstraction that was just introduced for Tavily and WebSearchAPI.ai.
 
 ---
 
@@ -90,7 +155,9 @@ If the custom path cannot complete successfully, it should not trap the user whe
 
 ### WebSearch
 Current behavior:
-- success → `class=search-substitution -> <provider>`
+- success in `fallback` mode → return the first successful provider result in effective provider order
+- success in `parallel` mode → return **all successful provider results**
+- partial failure in `parallel` mode → still return successful provider results and list failed providers
 - no provider keys → allow native WebSearch
 - auth failure → allow native WebSearch
 - credit / quota failure → allow native WebSearch
@@ -98,13 +165,19 @@ Current behavior:
 - unknown provider failure → allow native WebSearch
 
 Current provider policy modes:
-- `single`
 - `fallback`
 - `parallel` (**current default**)
 
 Current default order:
 - `tavily`
 - `websearchapi`
+
+Provider-selection relationship:
+- `CLAUDE_WEB_HOOKS_SEARCH_MODE` controls **how** providers are executed
+- `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS` controls the configured provider order
+- `CLAUDE_WEB_HOOKS_SEARCH_PRIMARY`, if set, is treated as a priority override and moved to the front of the provider order
+- in `fallback` mode, that means the system starts with `SEARCH_PRIMARY` first, then continues through the remaining ordered providers
+- in `parallel` mode, all providers still run, but the success/failure blocks are ordered with the effective provider order
 
 ### WebFetch
 Current behavior:
@@ -206,7 +279,7 @@ After install:
 2. Copy the shared helpers into `~/.claude/hooks/shared/`
 3. Copy the provider adapters into `~/.claude/hooks/shared/search-providers/`
 4. Merge the `hooks` block from `settings.example.json` into `~/.claude/settings.json`
-5. Add the env variables you want to use
+5. Add the env variables you want to use (`WEBSEARCHAPI_API_KEY`, `TAVILY_API_KEY`, and/or `EXA_API_KEY`)
 
 ---
 
@@ -236,6 +309,7 @@ The hook commands should point to the real installed paths under `~/.claude/hook
 The project currently uses **separate provider keys**:
 - `WEBSEARCHAPI_API_KEY` for WebSearchAPI.ai
 - `TAVILY_API_KEY` for Tavily
+- `EXA_API_KEY` for Exa
 
 `WEBSEARCHAPI_API_KEY` supports:
 
@@ -314,16 +388,91 @@ Recommended example for the **current implementation**:
 ```
 
 What these keys do:
-- `CLAUDE_WEB_HOOKS_SEARCH_MODE`: search provider execution mode (`single`, `fallback`, `parallel`)
+- `CLAUDE_WEB_HOOKS_SEARCH_MODE`: search provider execution mode (`fallback` or `parallel`)
 - `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS`: provider order for the search policy layer
+- `CLAUDE_WEB_HOOKS_SEARCH_PRIMARY`: optional priority override that moves one provider to the front of the ordered list
 - `WEBSEARCHAPI_API_KEY`: WebSearchAPI.ai key / key pool / key file path
 - `TAVILY_API_KEY`: Tavily key / key pool / key file path
+- `EXA_API_KEY`: Exa key / key pool / key file path
 - `TAVILY_SEARCH_DEPTH`, `TAVILY_MAX_RESULTS`, `TAVILY_TOPIC`: Tavily Search tuning
+- `EXA_SEARCH_TYPE`, `EXA_NUM_RESULTS`, `EXA_CATEGORY`: Exa Search tuning
 - `WEBFETCH_SCRAPER_*`: WebFetch scraper fallback behavior
 - `CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT`: shared default timeout for search providers
 - `CLAUDE_WEB_HOOKS_DEBUG`: debug logging for the hook layer
 
 ---
+
+## Search mode behavior
+
+### `fallback`
+Step-by-step behavior:
+1. Build the effective provider order
+   - start from `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS`
+   - if `CLAUDE_WEB_HOOKS_SEARCH_PRIMARY` is set, move it to the front
+2. Run the first provider in that order
+3. If it succeeds, return that provider’s result immediately
+4. If it fails, try the next provider
+5. If every configured provider fails, allow native Claude Code WebSearch to continue
+
+Characteristics:
+- best when you want lower cost and fewer provider calls
+- easiest mode to reason about if you want a clear primary → secondary → native flow
+
+### `parallel`
+Step-by-step behavior:
+1. Build the effective provider order
+   - start from `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS`
+   - if `CLAUDE_WEB_HOOKS_SEARCH_PRIMARY` is set, move it to the front for display/priority ordering
+2. Run all configured providers concurrently
+3. Collect every successful provider result
+4. Collect every provider failure separately
+5. If one or more providers succeed:
+   - return **all successful provider results**
+   - also show which providers failed
+6. If all configured providers fail:
+   - allow native Claude Code WebSearch to continue
+
+Characteristics:
+- best when you want maximum resilience and visibility across providers
+- costs more because more than one provider can be called on each search
+- output can be longer because multiple successful result blocks may be returned
+
+## Config matrix
+
+### A. Fallback mode, provider order only
+```json
+{
+  "env": {
+    "CLAUDE_WEB_HOOKS_SEARCH_MODE": "fallback",
+    "CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS": "tavily,websearchapi"
+  }
+}
+```
+
+### B. Fallback mode, force one provider to run first
+```json
+{
+  "env": {
+    "CLAUDE_WEB_HOOKS_SEARCH_MODE": "fallback",
+    "CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS": "tavily,websearchapi",
+    "CLAUDE_WEB_HOOKS_SEARCH_PRIMARY": "websearchapi"
+  }
+}
+```
+
+Effective order becomes:
+- `websearchapi`
+- `tavily`
+
+### C. Parallel mode (current default)
+```json
+{
+  "env": {
+    "CLAUDE_WEB_HOOKS_SEARCH_MODE": "parallel",
+    "CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS": "tavily,websearchapi"
+  }
+}
+```
 
 ## Example Claude Code settings snippet
 

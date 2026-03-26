@@ -10,7 +10,7 @@
 
 ## Objective
 
-Add configurable search-provider policy so users can choose between `single`, `fallback`, or `parallel` provider behavior.
+Add configurable search-provider policy so users can choose between `fallback` or `parallel` provider behavior.
 
 ## Why this phase exists
 
@@ -28,7 +28,7 @@ Adding another provider is not enough; the hook needs an explicit policy layer s
 ## Action points
 - [x] Define provider policy config keys
 - [x] Define provider order / primary / secondary behavior
-- [x] Define behavior for `single`, `fallback`, and `parallel`
+- [x] Define behavior for `fallback` and `parallel`
 - [x] Keep native fallback as final safety path in every mode
 
 ## Out of scope
@@ -49,9 +49,11 @@ Adding another provider is not enough; the hook needs an explicit policy layer s
 - record provider-policy support once implemented
 
 ## Verification
-- `single` uses only one provider
+- `fallback` tries providers one by one in effective provider order
 - `fallback` tries provider order and then native fallback
 - `parallel` behavior is explicit and deterministic
+- `parallel` returns all successful provider results instead of the first success only
+- partial provider failures are preserved as failure summaries
 
 ## Exit criteria
 - provider mode is configurable
@@ -59,7 +61,7 @@ Adding another provider is not enough; the hook needs an explicit policy layer s
 
 ## Risks / rollback notes
 - risk: too many modes too early create confusion
-- rollback: keep only `single` + `fallback` if `parallel` is not stable enough yet
+- rollback: keep only `fallback` if `parallel` is not stable enough yet
 
 ## Next possible phases
 - `phase-004-wire-websearch-hook.md`

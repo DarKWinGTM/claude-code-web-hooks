@@ -22,7 +22,7 @@ Without a provider abstraction, adding Tavily directly will make the WebSearch h
 - Target outcome: later provider additions can plug into a stable shared contract
 
 ## Entry conditions / prerequisites
-- Current single-provider WebSearch hook is stable enough to preserve as baseline
+- Current provider-specific WebSearch hook is stable enough to preserve as baseline
 - Shared failure policy helper already exists
 
 ## Action points
@@ -57,7 +57,7 @@ Without a provider abstraction, adding Tavily directly will make the WebSearch h
 
 ## Risks / rollback notes
 - risk: abstraction too vague and later phases drift
-- rollback: keep current single-provider logic in place if abstraction is not yet stable
+- rollback: keep current provider-specific logic in place if abstraction is not yet stable
 
 ## Next possible phases
 - `phase-002-add-tavily-search-adapter.md`

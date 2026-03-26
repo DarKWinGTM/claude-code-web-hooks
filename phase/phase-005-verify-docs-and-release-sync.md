@@ -32,6 +32,7 @@ Multi-provider behavior is not complete until users can install it, understand i
 - [x] Update `verify.sh` to include provider-policy checks
 - [x] Update `TODO.md` and `changelog.md`
 - [ ] Prepare next release notes once implementation is stable
+- [x] Document aggregate parallel-result behavior and partial-failure reporting
 
 ## Out of scope
 - new provider integrations beyond Tavily Search

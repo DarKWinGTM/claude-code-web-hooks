@@ -10,7 +10,7 @@
 
 ## Objective
 
-Replace the current hardcoded single-provider WebSearch execution path with provider-policy routing that can call WebSearchAPI.ai or Tavily according to configuration.
+Replace the current provider-specific WebSearch execution path with provider-policy routing that can call WebSearchAPI.ai, Tavily, or Exa according to configuration.
 
 ## Why this phase exists
 
@@ -42,7 +42,7 @@ The hook is where user-facing behavior becomes real. The abstraction and provide
 - shared failure policy if necessary
 
 ## TODO coordination
-- maps to: `Wire WebSearch flow to use provider policy instead of hardcoded single-provider routing`
+- maps to: `Wire WebSearch flow to use provider policy instead of hardcoded provider-specific routing`
 
 ## Changelog coordination
 - record WebSearch hook multi-provider routing once complete
@@ -51,15 +51,16 @@ The hook is where user-facing behavior becomes real. The abstraction and provide
 - WebSearch works in WebSearchAPI.ai-only mode
 - WebSearch works in Tavily-only mode
 - WebSearch works in fallback mode
-- provider failure still falls through to native WebSearch
+- WebSearch works in parallel mode with aggregated successful results
+- provider failure still falls through to native WebSearch when all providers fail
 
 ## Exit criteria
-- no hardcoded single-provider search path remains in WebSearch hook
+- no hardcoded provider-specific search path remains in WebSearch hook
 - provider mode changes actual runtime behavior
 
 ## Risks / rollback notes
 - risk: regress current stable WebSearchAPI.ai path
-- rollback: keep a stable `single:websearchapi` path available throughout integration
+- rollback: keep a stable WebSearchAPI.ai path available throughout integration if needed
 
 ## Next possible phases
 - `phase-005-verify-docs-and-release-sync.md`

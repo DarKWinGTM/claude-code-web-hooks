@@ -7,16 +7,15 @@
  *   - Tavily Search
  *
  * Behavior:
- *   - Executes provider policy in `single`, `fallback`, or `parallel` mode
+ *   - Executes provider policy in `fallback` or `parallel` mode
  *   - If the custom provider path succeeds, returns provider-backed search results
  *   - If the custom provider path fails, allows native WebSearch to continue
  *
  * Environment Variables:
  *   WEBSEARCHAPI_API_KEY                    - WebSearchAPI.ai key, key pool, or key file path
  *   TAVILY_API_KEY                          - Tavily key, key pool, or key file path
- *   CLAUDE_WEB_HOOKS_SEARCH_MODE            - `single`, `fallback`, or `parallel` (default: `parallel`)
+ *   CLAUDE_WEB_HOOKS_SEARCH_MODE            - `fallback` or `parallel` (default: `parallel`)
  *   CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS       - comma-separated provider order (default: `tavily,websearchapi`)
- *   CLAUDE_WEB_HOOKS_SEARCH_PRIMARY         - primary provider when mode=`single`
  *   CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT      - default search timeout in seconds (default: 55)
  *   TAVILY_TIMEOUT                          - Tavily-specific timeout override in seconds
  *   WEBSEARCHAPI_MAX_RESULTS                - WebSearchAPI.ai max results
@@ -41,7 +40,7 @@
 
 const { classifyProviderFailure, shouldAllowNativeFallback } = require('./shared/failure-policy.cjs');
 const { executeSearchProviderPolicy } = require('./shared/search-provider-policy.cjs');
-const { formatNormalizedSearchProviderResult } = require('./shared/search-provider-contract.cjs');
+const { formatAggregateSearchProviderResult } = require('./shared/search-provider-contract.cjs');
 
 function debugLog(message) {
   if (process.env.CLAUDE_WEB_HOOKS_DEBUG) {
@@ -53,12 +52,18 @@ function hasAnySearchProviderConfigured() {
   return Boolean(process.env.WEBSEARCHAPI_API_KEY || process.env.TAVILY_API_KEY);
 }
 
-function outputSuccess(result) {
-  const formattedResults = formatNormalizedSearchProviderResult(result);
+function outputSuccess(query, policyResult) {
+  const formattedResults = formatAggregateSearchProviderResult({
+    query,
+    successes: policyResult.successes || [],
+    failures: policyResult.failures || [],
+  });
+
+  const successProviders = (policyResult.successes || []).map((item) => item.provider).join(',') || 'none';
   const output = {
     decision: 'block',
-    reason: `WebSearch completed via ${result.providerLabel}`,
-    systemMessage: `[WebSearch hook] class=search-substitution -> ${result.provider}`,
+    reason: `WebSearch completed via ${successProviders}`,
+    systemMessage: `[WebSearch hook] class=search-substitution -> ${policyResult.mode}-results`,
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'deny',
@@ -139,8 +144,8 @@ async function processHook() {
 
     debugLog('Executing multi-provider WebSearch policy');
     const result = await executeSearchProviderPolicy({ query, debugLog });
-    if (result.success) {
-      outputSuccess(result.result);
+    if (result.success && Array.isArray(result.successes) && result.successes.length > 0) {
+      outputSuccess(query, result);
       return;
     }
 

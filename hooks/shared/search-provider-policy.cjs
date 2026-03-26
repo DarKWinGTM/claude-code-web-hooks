@@ -3,6 +3,7 @@ const fs = require('fs');
 
 const websearchapi = require('./search-providers/websearchapi.cjs');
 const tavily = require('./search-providers/tavily.cjs');
+const exa = require('./search-providers/exa.cjs');
 
 function parseInlineEntries(rawValue, delimiter = '|') {
   return String(rawValue || '')
@@ -59,28 +60,36 @@ function shuffle(list) {
 }
 
 function getProviderMode() {
-  return process.env.CLAUDE_WEB_HOOKS_SEARCH_MODE || 'parallel';
+  const mode = process.env.CLAUDE_WEB_HOOKS_SEARCH_MODE || 'parallel';
+  return mode === 'parallel' ? 'parallel' : 'fallback';
 }
 
 function getProviderOrder() {
   const configured = parseInlineEntries(process.env.CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS || 'tavily,websearchapi', ',');
-  return configured.length > 0 ? configured : ['tavily', 'websearchapi'];
+  const order = configured.length > 0 ? configured : ['tavily', 'websearchapi'];
+  const primary = String(process.env.CLAUDE_WEB_HOOKS_SEARCH_PRIMARY || '').trim();
+  if (!primary) return order;
+  const deduped = [primary, ...order.filter((item) => item !== primary)];
+  return deduped;
 }
 
 function getProviderApiKeys(provider) {
   if (provider === 'websearchapi') return parseApiKeyInput(process.env.WEBSEARCHAPI_API_KEY);
   if (provider === 'tavily') return parseApiKeyInput(process.env.TAVILY_API_KEY);
+  if (provider === 'exa') return parseApiKeyInput(process.env.EXA_API_KEY);
   return [];
 }
 
 function getProviderTimeout(provider) {
   if (provider === 'tavily') return parseInt(process.env.TAVILY_TIMEOUT || process.env.CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT || '55', 10);
+  if (provider === 'exa') return parseInt(process.env.EXA_TIMEOUT || process.env.CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT || '55', 10);
   return parseInt(process.env.CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT || '55', 10);
 }
 
 function getProviderImplementation(provider) {
   if (provider === 'websearchapi') return websearchapi;
   if (provider === 'tavily') return tavily;
+  if (provider === 'exa') return exa;
   return null;
 }
 
@@ -112,28 +121,45 @@ async function executeSearchProviderPolicy({ query, debugLog }) {
   const mode = getProviderMode();
   const providers = getProviderOrder();
 
-  if (mode === 'single') {
-    const primary = process.env.CLAUDE_WEB_HOOKS_SEARCH_PRIMARY || providers[0] || 'websearchapi';
-    const outcome = await executeProvider(primary, query, debugLog);
-    return { mode, attempts: [outcome], success: outcome.ok, result: outcome.result, error: outcome.error };
-  }
-
   if (mode === 'parallel') {
     const outcomes = await Promise.all(providers.map((provider) => executeProvider(provider, query, debugLog)));
-    const success = outcomes.find((item) => item.ok);
-    return { mode, attempts: outcomes, success: Boolean(success), result: success?.result, error: outcomes.map((item) => item.error).filter(Boolean).join(' | ') };
+    const successes = outcomes.filter((item) => item.ok).map((item) => item.result);
+    const failures = outcomes.filter((item) => !item.ok).map((item) => ({ provider: item.provider, error: item.error }));
+    return {
+      mode,
+      attempts: outcomes,
+      success: successes.length > 0,
+      successes,
+      failures,
+      error: failures.map((item) => item.error).filter(Boolean).join(' | '),
+    };
   }
 
   const attempts = [];
+  const failures = [];
   for (const provider of providers) {
     const outcome = await executeProvider(provider, query, debugLog);
     attempts.push(outcome);
     if (outcome.ok) {
-      return { mode: 'fallback', attempts, success: true, result: outcome.result };
+      return {
+        mode: 'fallback',
+        attempts,
+        success: true,
+        successes: [outcome.result],
+        failures,
+      };
     }
+    failures.push({ provider: outcome.provider, error: outcome.error });
   }
 
-  return { mode: 'fallback', attempts, success: false, error: attempts.map((item) => item.error).filter(Boolean).join(' | ') };
+  return {
+    mode: 'fallback',
+    attempts,
+    success: false,
+    successes: [],
+    failures,
+    error: failures.map((item) => item.error).filter(Boolean).join(' | '),
+  };
 }
 
 module.exports = {

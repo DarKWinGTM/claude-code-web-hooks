@@ -38,8 +38,11 @@
 - Expanded README and design wording to explain that the project increases practical WebSearch/WebFetch capability and addresses custom-endpoint cases where Claude Code cannot complete the expected search process server-side
 - Added explicit documentation that the current implementation targets WebSearchAPI.ai only, while preserving the architectural option to support other search APIs later
 - Added a current provider plan snapshot in the README as a non-binding planning reference
+- Expanded the README with Tavily pricing and practical usage notes for search/extract/crawl credit planning
+- Added a practical provider comparison section for WebSearchAPI.ai vs Tavily and documented Exa.ai as a future search-provider candidate
 - Added Tavily Search adapter, provider abstraction, provider policy helper, and WebSearch multi-provider routing implementation in project source
 - Set the default search provider mode to `parallel` with provider order `tavily,websearchapi`
+- Updated `parallel` mode so it returns all successful provider results and reports partial provider failures instead of collapsing to the first success only
 
 ### Decision notes
 - The project is positioned as a **client runtime hook layer**, not a gateway feature

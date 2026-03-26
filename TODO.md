@@ -34,16 +34,19 @@
 ### Behavior / Quality
 - [x] Improve API key pool format to avoid delimiter ambiguity
 - [ ] Reduce noisy hook messaging while preserving decision visibility
+- [x] Make `parallel` mode return all successful provider results and report partial failures
 - [x] Add domain heuristics for better WebFetch scrape escalation decisions
 - [x] Add tests or repeatable verification flow for hook decision branches
 
 ### Multi-provider roadmap
 - [x] Add search provider abstraction layer
 - [x] Add Tavily Search adapter
-- [x] Add search provider policy config (`single` / `fallback` / `parallel`)
-- [x] Wire WebSearch flow to use provider policy instead of hardcoded single-provider routing
+- [x] Add search provider policy config (`fallback` / `parallel`)
+- [x] Wire WebSearch flow to use provider policy instead of hardcoded provider-specific routing
 - [x] Normalize Tavily Search responses into the project’s shared search-result format
 - [x] Extend verify coverage for multi-provider search behavior
+- [ ] Research and evaluate Exa.ai as an additional search-provider adapter
+- [ ] Decide whether Exa should be search-only first or enter a later extract-provider phase
 
 ### Release readiness checklist
 - [x] Add `.gitignore`

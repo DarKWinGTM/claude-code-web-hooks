@@ -14,6 +14,7 @@ SEARCH_PROVIDER_CONTRACT_SRC="${PROJECT_DIR}/hooks/shared/search-provider-contra
 SEARCH_PROVIDER_POLICY_SRC="${PROJECT_DIR}/hooks/shared/search-provider-policy.cjs"
 WEBSEARCHAPI_PROVIDER_SRC="${PROJECT_DIR}/hooks/shared/search-providers/websearchapi.cjs"
 TAVILY_PROVIDER_SRC="${PROJECT_DIR}/hooks/shared/search-providers/tavily.cjs"
+EXA_PROVIDER_SRC="${PROJECT_DIR}/hooks/shared/search-providers/exa.cjs"
 WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-custom.cjs"
 WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-scraper.cjs"
 FAILURE_POLICY_DST="${TARGET_SHARED_DIR}/failure-policy.cjs"
@@ -21,6 +22,7 @@ SEARCH_PROVIDER_CONTRACT_DST="${TARGET_SHARED_DIR}/search-provider-contract.cjs"
 SEARCH_PROVIDER_POLICY_DST="${TARGET_SHARED_DIR}/search-provider-policy.cjs"
 WEBSEARCHAPI_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/websearchapi.cjs"
 TAVILY_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/tavily.cjs"
+EXA_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/exa.cjs"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "${TARGET_HOOK_DIR}" "${TARGET_SHARED_DIR}" "${TARGET_SEARCH_PROVIDER_DIR}" "${BACKUP_DIR}"
@@ -31,7 +33,8 @@ cp "${SEARCH_PROVIDER_CONTRACT_SRC}" "${SEARCH_PROVIDER_CONTRACT_DST}"
 cp "${SEARCH_PROVIDER_POLICY_SRC}" "${SEARCH_PROVIDER_POLICY_DST}"
 cp "${WEBSEARCHAPI_PROVIDER_SRC}" "${WEBSEARCHAPI_PROVIDER_DST}"
 cp "${TAVILY_PROVIDER_SRC}" "${TAVILY_PROVIDER_DST}"
-chmod 755 "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}"
+cp "${EXA_PROVIDER_SRC}" "${EXA_PROVIDER_DST}"
+chmod 755 "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}"
 
 if [ -f "${TARGET_SETTINGS}" ]; then
   cp "${TARGET_SETTINGS}" "${BACKUP_DIR}/settings.${TIMESTAMP}.json"
@@ -95,6 +98,7 @@ printf '  - %s\n' "${SEARCH_PROVIDER_POLICY_DST}"
 printf 'Installed provider adapters:\n'
 printf '  - %s\n' "${WEBSEARCHAPI_PROVIDER_DST}"
 printf '  - %s\n' "${TAVILY_PROVIDER_DST}"
+printf '  - %s\n' "${EXA_PROVIDER_DST}"
 printf 'Updated settings:\n'
 printf '  - %s\n' "${TARGET_SETTINGS}"
 printf 'Backup created:\n'

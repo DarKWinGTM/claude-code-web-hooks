@@ -14,6 +14,7 @@ SEARCH_PROVIDER_CONTRACT_DST="${TARGET_SHARED_DIR}/search-provider-contract.cjs"
 SEARCH_PROVIDER_POLICY_DST="${TARGET_SHARED_DIR}/search-provider-policy.cjs"
 WEBSEARCHAPI_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/websearchapi.cjs"
 TAVILY_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/tavily.cjs"
+EXA_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/exa.cjs"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "${BACKUP_DIR}"
@@ -43,7 +44,7 @@ fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8')
 NODE
 fi
 
-rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}"
+rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}"
 
 printf 'Removed hooks if present:\n'
 printf '  - %s\n' "${WEBSEARCH_DST}"
@@ -55,6 +56,7 @@ printf '  - %s\n' "${SEARCH_PROVIDER_POLICY_DST}"
 printf 'Removed provider adapters if present:\n'
 printf '  - %s\n' "${WEBSEARCHAPI_PROVIDER_DST}"
 printf '  - %s\n' "${TAVILY_PROVIDER_DST}"
+printf '  - %s\n' "${EXA_PROVIDER_DST}"
 if [ -f "${TARGET_SETTINGS}" ]; then
   printf 'Updated settings:\n'
   printf '  - %s\n' "${TARGET_SETTINGS}"

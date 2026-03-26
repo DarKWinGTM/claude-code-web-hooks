@@ -199,17 +199,26 @@ Recommended future split:
   - WebSearchAPI.ai Scrape
   - Tavily Extract (future candidate)
 - provider policy layer
-  - `single`
   - `fallback`
   - `parallel`
 
 Current default after Tavily Search integration:
 - `WebSearch`: `parallel`
   - provider order: `tavily,websearchapi`
-  - if one succeeds, the hook returns the first successful normalized result
-  - if both fail, native Claude Code WebSearch remains the final fallback
+  - all successful provider results are returned in the final hook output
+  - partial provider failures are reported alongside the successful results
+  - if all providers fail, native Claude Code WebSearch remains the final fallback
+- `CLAUDE_WEB_HOOKS_SEARCH_PRIMARY`, when set, overrides the first provider in the effective order
 
 This keeps the project resilient while preferring provider redundancy before native fallback.
+
+### Additional provider candidate: Exa.ai
+Exa now looks like a plausible future search-provider candidate for this project.
+
+Near-term recommendation:
+- keep Exa in the search-layer roadmap, not the WebFetch layer yet
+- if added, integrate it through the existing shared search-provider abstraction and policy layer
+- do not add Exa by bypassing the current provider architecture
 
 ---
 

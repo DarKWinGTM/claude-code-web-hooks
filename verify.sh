@@ -70,13 +70,38 @@ NODE
 
 printf '\n== Search provider policy check ==\n'
 PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
-const { executeSearchProviderPolicy } = require(`${process.env.PROJECT_DIR_ENV}/hooks/shared/search-provider-policy.cjs`);
-console.log(JSON.stringify({
-  available: typeof executeSearchProviderPolicy === 'function'
-}, null, 2));
-if (typeof executeSearchProviderPolicy !== 'function') {
-  throw new Error('search provider policy helper not available');
-}
+const path = require('path');
+const projectDir = process.env.PROJECT_DIR_ENV;
+const policyPath = path.join(projectDir, 'hooks/shared/search-provider-policy.cjs');
+const tavilyPath = path.join(projectDir, 'hooks/shared/search-providers/tavily.cjs');
+const websearchapiPath = path.join(projectDir, 'hooks/shared/search-providers/websearchapi.cjs');
+
+process.env.CLAUDE_WEB_HOOKS_SEARCH_MODE = 'parallel';
+process.env.CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS = 'tavily,websearchapi';
+process.env.TAVILY_API_KEY = 'dummy';
+process.env.WEBSEARCHAPI_API_KEY = 'dummy';
+
+const tavily = require(tavilyPath);
+const websearchapi = require(websearchapiPath);
+const { executeSearchProviderPolicy } = require(policyPath);
+
+tavily.search = async ({ query }) => ({ ok: true, result: { provider: 'tavily', providerLabel: 'Tavily', query, items: [{ title: 'T', url: 'https://t.example', summary: 't' }] } });
+websearchapi.search = async ({ query }) => ({ ok: false, error: 'quota exceeded', provider: 'websearchapi' });
+
+(async () => {
+  const out = await executeSearchProviderPolicy({ query: 'verify parallel', debugLog: () => {} });
+  console.log(JSON.stringify({
+    available: typeof executeSearchProviderPolicy === 'function',
+    mode: out.mode,
+    successCount: out.successes.length,
+    failureCount: out.failures.length,
+    firstSuccessProvider: out.successes[0]?.provider || null
+  }, null, 2));
+  if (typeof executeSearchProviderPolicy !== 'function') throw new Error('search provider policy helper not available');
+  if (out.mode !== 'parallel') throw new Error('parallel mode not applied');
+  if (out.successes.length !== 1) throw new Error('parallel success aggregation is incorrect');
+  if (out.failures.length !== 1) throw new Error('parallel failure aggregation is incorrect');
+})();
 NODE
 
 printf '\nAll checks passed.\n'
