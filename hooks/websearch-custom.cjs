@@ -16,8 +16,14 @@
  *   TAVILY_API_KEY                          - Tavily key, key pool, or key file path
  *   CLAUDE_WEB_HOOKS_SEARCH_MODE            - `fallback` or `parallel` (default: `parallel`)
  *   CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS       - comma-separated provider order (default: `tavily,websearchapi`)
- *   CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT      - default search timeout in seconds (default: 55)
- *   TAVILY_TIMEOUT                          - Tavily-specific timeout override in seconds
+ *   CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT         - default search timeout in seconds (default: 55)
+ *   TAVILY_SEARCH_TIMEOUT                   - Tavily-specific search timeout override in seconds
+ *   EXA_SEARCH_TIMEOUT                      - Exa-specific search timeout override in seconds
+ *
+ *   Backward compatibility:
+ *   - `CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT` is still accepted as fallback for `CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT`
+ *   - `TAVILY_TIMEOUT` is still accepted as fallback for `TAVILY_SEARCH_TIMEOUT`
+ *   - `EXA_TIMEOUT` is still accepted as fallback for `EXA_SEARCH_TIMEOUT`
  *   WEBSEARCHAPI_MAX_RESULTS                - WebSearchAPI.ai max results
  *   WEBSEARCHAPI_INCLUDE_CONTENT            - WebSearchAPI.ai include content flag
  *   WEBSEARCHAPI_COUNTRY                    - WebSearchAPI.ai country

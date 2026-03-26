@@ -1,6 +1,6 @@
 # Claude Code Web Hooks - Design
 
-> **Current Version:** 0.1.0
+> **Current Version:** 0.1.2
 > **Project:** Claude Code Web Hooks
 > **Status:** Draft
 > **Last Updated:** 2026-03-24

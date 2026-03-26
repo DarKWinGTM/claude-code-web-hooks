@@ -18,7 +18,7 @@ function buildPayload(query) {
   const payload = {
     query,
     type: process.env.EXA_SEARCH_TYPE || 'auto',
-    numResults: Math.max(1, Math.min(parseIntegerEnv(process.env.EXA_NUM_RESULTS, 10), 100)),
+    numResults: Math.max(1, Math.min(parseIntegerEnv(process.env.EXA_MAX_RESULTS, 10), 100)),
     category: process.env.EXA_CATEGORY || undefined,
     includeDomains: process.env.EXA_INCLUDE_DOMAINS ? process.env.EXA_INCLUDE_DOMAINS.split(',').map((item) => item.trim()).filter(Boolean) : undefined,
     excludeDomains: process.env.EXA_EXCLUDE_DOMAINS ? process.env.EXA_EXCLUDE_DOMAINS.split(',').map((item) => item.trim()).filter(Boolean) : undefined,

@@ -381,7 +381,12 @@ Recommended example for the **current implementation**:
     "TAVILY_TOPIC": "general",
     "WEBFETCH_SCRAPER_RETURN_FORMAT": "markdown",
     "WEBFETCH_SCRAPER_ENGINE": "browser",
-    "CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT": "55",
+    "CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT": "55",
+    "TAVILY_SEARCH_TIMEOUT": "55",
+    "EXA_SEARCH_TIMEOUT": "55",
+    "WEBFETCH_PROBE_TIMEOUT": "12",
+    "WEBFETCH_PROBE_MAX_HTML_BYTES": "262144",
+    "WEBFETCH_SCRAPER_TIMEOUT": "25",
     "CLAUDE_WEB_HOOKS_DEBUG": "0"
   }
 }
@@ -395,9 +400,11 @@ What these keys do:
 - `TAVILY_API_KEY`: Tavily key / key pool / key file path
 - `EXA_API_KEY`: Exa key / key pool / key file path
 - `TAVILY_SEARCH_DEPTH`, `TAVILY_MAX_RESULTS`, `TAVILY_TOPIC`: Tavily Search tuning
-- `EXA_SEARCH_TYPE`, `EXA_NUM_RESULTS`, `EXA_CATEGORY`: Exa Search tuning
-- `WEBFETCH_SCRAPER_*`: WebFetch scraper fallback behavior
-- `CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT`: shared default timeout for search providers
+- `EXA_SEARCH_TYPE`, `EXA_MAX_RESULTS`, `EXA_CATEGORY`: Exa Search tuning
+- `WEBFETCH_PROBE_TIMEOUT`, `WEBFETCH_PROBE_MAX_HTML_BYTES`: initial HTML probe tuning for WebFetch detection
+- `WEBFETCH_SCRAPER_TIMEOUT`: scraper API timeout for WebFetch fallback
+- `CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT`: shared default timeout for search providers
+- `TAVILY_SEARCH_TIMEOUT`, `EXA_SEARCH_TIMEOUT`: provider-specific timeout overrides
 - `CLAUDE_WEB_HOOKS_DEBUG`: debug logging for the hook layer
 
 ---

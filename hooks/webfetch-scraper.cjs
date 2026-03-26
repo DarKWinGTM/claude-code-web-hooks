@@ -9,9 +9,14 @@
  *
  * Environment Variables:
  *   WEBSEARCHAPI_API_KEY                 - WebSearchAPI.ai bearer token(s); multiple keys allowed via '|' delimiter
- *   WEBFETCH_SCRAPER_TIMEOUT             - Initial HTML fetch timeout in seconds (default: 12)
- *   WEBFETCH_SCRAPER_MAX_HTML_BYTES      - Max initial HTML bytes to inspect (default: 262144)
- *   WEBFETCH_SCRAPER_API_TIMEOUT         - Scraper API timeout in seconds (default: 25)
+ *   WEBFETCH_PROBE_TIMEOUT               - Initial HTML fetch timeout in seconds (default: 12)
+ *   WEBFETCH_PROBE_MAX_HTML_BYTES        - Max initial HTML bytes to inspect (default: 262144)
+ *   WEBFETCH_SCRAPER_TIMEOUT             - Scraper API timeout in seconds (default: 25)
+ *
+ *   Backward compatibility:
+ *   - `WEBFETCH_SCRAPER_TIMEOUT` (old probe timeout name) is still accepted as fallback for `WEBFETCH_PROBE_TIMEOUT`
+ *   - `WEBFETCH_SCRAPER_MAX_HTML_BYTES` (old probe bytes name) is still accepted as fallback for `WEBFETCH_PROBE_MAX_HTML_BYTES`
+ *   - `WEBFETCH_SCRAPER_API_TIMEOUT` (old scraper API timeout name) is still accepted as fallback for `WEBFETCH_SCRAPER_TIMEOUT`
  *   WEBFETCH_SCRAPER_RETURN_FORMAT       - Scraper return format (default: markdown)
  *   WEBFETCH_SCRAPER_ENGINE              - Scraper engine (default: browser)
  *   WEBFETCH_SCRAPER_TARGET_SELECTOR     - Optional target selector
@@ -169,7 +174,7 @@ function isTemplateHeavyHost(targetUrl) {
 }
 
 function detectRenderingMode(targetUrl, html) {
-  const normalizedHtml = String(html || '').slice(0, parseIntegerEnv(process.env.WEBFETCH_SCRAPER_MAX_HTML_BYTES, DEFAULT_MAX_HTML_BYTES));
+  const normalizedHtml = String(html || '').slice(0, parseIntegerEnv(process.env.WEBFETCH_PROBE_MAX_HTML_BYTES || process.env.WEBFETCH_SCRAPER_MAX_HTML_BYTES, DEFAULT_MAX_HTML_BYTES));
   const text = htmlToText(normalizedHtml);
   const textLength = text.length;
   const scriptCount = countMatches(normalizedHtml, /<script\b/gi);
@@ -242,7 +247,7 @@ function fetchInitialHtml(targetUrl, timeoutSec = DEFAULT_FETCH_TIMEOUT_SEC, red
 
     const parsed = new URL(targetUrl);
     const client = parsed.protocol === 'http:' ? http : https;
-    const maxBytes = parseIntegerEnv(process.env.WEBFETCH_SCRAPER_MAX_HTML_BYTES, DEFAULT_MAX_HTML_BYTES);
+    const maxBytes = parseIntegerEnv(process.env.WEBFETCH_PROBE_MAX_HTML_BYTES || process.env.WEBFETCH_SCRAPER_MAX_HTML_BYTES, DEFAULT_MAX_HTML_BYTES);
 
     const request = client.request(parsed, {
       method: 'GET',
@@ -445,7 +450,7 @@ async function processHook() {
       outputAllowContinuation('[WebFetch hook] class=unsupported-url -> native-webfetch');
     }
 
-    const initial = await fetchInitialHtml(targetUrl, parseIntegerEnv(process.env.WEBFETCH_SCRAPER_TIMEOUT, DEFAULT_FETCH_TIMEOUT_SEC));
+    const initial = await fetchInitialHtml(targetUrl, parseIntegerEnv(process.env.WEBFETCH_PROBE_TIMEOUT || process.env.WEBFETCH_SCRAPER_TIMEOUT, DEFAULT_FETCH_TIMEOUT_SEC));
     if (!initial.ok) {
       debugLog(`Initial HTML probe skipped fallback for ${targetUrl}: ${initial.error || 'unknown reason'}`);
       outputAllowContinuation(`[WebFetch hook] class=probe-unusable -> native-webfetch (${initial.error || 'unknown reason'})`);
@@ -466,7 +471,7 @@ async function processHook() {
     debugLog(`${detection.classification} detected for ${targetUrl}; using scraper fallback (${detection.reason})`);
     const errors = [];
     for (const apiKey of apiKeys) {
-      const scraped = await scrapeUrl(targetUrl, apiKey, parseIntegerEnv(process.env.WEBFETCH_SCRAPER_API_TIMEOUT, DEFAULT_SCRAPER_API_TIMEOUT_SEC));
+      const scraped = await scrapeUrl(targetUrl, apiKey, parseIntegerEnv(process.env.WEBFETCH_SCRAPER_TIMEOUT || process.env.WEBFETCH_SCRAPER_API_TIMEOUT, DEFAULT_SCRAPER_API_TIMEOUT_SEC));
       if (scraped.ok) {
         outputScrapedSuccess(targetUrl, prompt, detection, scraped.data);
       }

@@ -81,9 +81,10 @@ function getProviderApiKeys(provider) {
 }
 
 function getProviderTimeout(provider) {
-  if (provider === 'tavily') return parseInt(process.env.TAVILY_TIMEOUT || process.env.CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT || '55', 10);
-  if (provider === 'exa') return parseInt(process.env.EXA_TIMEOUT || process.env.CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT || '55', 10);
-  return parseInt(process.env.CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT || '55', 10);
+  const sharedTimeout = parseInt(process.env.CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT || process.env.CLAUDE_WEB_HOOKS_WEBSEARCH_TIMEOUT || '55', 10);
+  if (provider === 'tavily') return parseInt(process.env.TAVILY_SEARCH_TIMEOUT || process.env.TAVILY_TIMEOUT || String(sharedTimeout), 10);
+  if (provider === 'exa') return parseInt(process.env.EXA_SEARCH_TIMEOUT || process.env.EXA_TIMEOUT || String(sharedTimeout), 10);
+  return sharedTimeout;
 }
 
 function getProviderImplementation(provider) {

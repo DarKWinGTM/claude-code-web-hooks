@@ -1,9 +1,37 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.0
+> **Current Version:** 0.1.2
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
 > **Last Updated:** 2026-03-24
+
+---
+
+## Version 0.1.2 - 2026-03-24
+
+### Added
+- Added Exa Search as an additional search-provider adapter in the shared search abstraction layer
+- Added Exa-related configuration examples to `settings.example.json`
+- Added aggregate `parallel` search-result behavior so all successful providers are returned together and partial failures are listed
+
+### Updated
+- Simplified search mode guidance by removing `single` mode from the public-facing behavior model
+- Clarified README documentation for `fallback` and `parallel` behavior, provider ordering, and `SEARCH_PRIMARY`
+- Normalized timeout and probe-related env naming toward:
+  - `CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT`
+  - `TAVILY_SEARCH_TIMEOUT`
+  - `EXA_SEARCH_TIMEOUT`
+  - `WEBFETCH_PROBE_TIMEOUT`
+  - `WEBFETCH_PROBE_MAX_HTML_BYTES`
+  - `WEBFETCH_SCRAPER_TIMEOUT`
+- Kept backward compatibility for the legacy timeout env names
+- Updated install/uninstall handling for the expanded shared helper/provider file set
+- Updated phase documents to reflect completed multi-provider implementation phases and in-progress verification/doc sync
+
+### Notes
+- Current default search mode remains `parallel`
+- Current default provider order remains `tavily,websearchapi`
+- Native fallback remains fully permissive when custom search execution does not complete successfully
 
 ---
 
@@ -43,6 +71,7 @@
 - Added Tavily Search adapter, provider abstraction, provider policy helper, and WebSearch multi-provider routing implementation in project source
 - Set the default search provider mode to `parallel` with provider order `tavily,websearchapi`
 - Updated `parallel` mode so it returns all successful provider results and reports partial provider failures instead of collapsing to the first success only
+- Normalized timeout/probe env names toward `CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT`, `TAVILY_SEARCH_TIMEOUT`, `EXA_SEARCH_TIMEOUT`, `WEBFETCH_PROBE_TIMEOUT`, `WEBFETCH_PROBE_MAX_HTML_BYTES`, and `WEBFETCH_SCRAPER_TIMEOUT` with temporary backward compatibility for legacy names
 
 ### Decision notes
 - The project is positioned as a **client runtime hook layer**, not a gateway feature
