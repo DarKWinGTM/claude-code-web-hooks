@@ -1,4 +1,4 @@
-# Phase 050 - Verify, Document, and Release Sync
+# Phase 005 - Verify, Document, and Release Sync
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P5
@@ -18,7 +18,7 @@ Multi-provider behavior is not complete until users can install it, understand i
 
 ## Design extraction
 - Source design: provider policy should be explicit and user-facing docs should explain the real behavior
-- Derived execution work: update docs/examples/tests/release notes for Tavily-enabled search flow
+- Derived execution work: update docs/examples/tests/release notes for the final multi-provider search flow
 - Target outcome: implementation and release-facing artifacts stay synchronized
 
 ## Entry conditions / prerequisites
@@ -35,7 +35,7 @@ Multi-provider behavior is not complete until users can install it, understand i
 - [x] Document aggregate parallel-result behavior and partial-failure reporting
 
 ## Out of scope
-- new provider integrations beyond Tavily Search
+- new provider integrations beyond the current WebSearch provider set
 - non-Claude-Code runtime support
 
 ## Affected artifacts
@@ -49,12 +49,12 @@ Multi-provider behavior is not complete until users can install it, understand i
 - maps to: `Extend verify coverage for multi-provider search behavior`
 
 ## Changelog coordination
-- record Tavily integration and provider policy rollout
+- record final multi-provider rollout wording, env naming, and verification coverage
 
 ## Verification
 - README instructions match real implementation
 - example settings reflect actual config keys
-- verify script covers provider policy and fallback behavior
+- verify script covers provider policy, aggregate parallel behavior, and fallback behavior
 
 ## Exit criteria
 - docs, tests, and release notes align with the shipped behavior

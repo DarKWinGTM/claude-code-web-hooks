@@ -5,6 +5,7 @@
  * Current built-in provider support:
  *   - WebSearchAPI.ai
  *   - Tavily Search
+ *   - Exa Search
  *
  * Behavior:
  *   - Executes provider policy in `fallback` or `parallel` mode
@@ -14,8 +15,10 @@
  * Environment Variables:
  *   WEBSEARCHAPI_API_KEY                    - WebSearchAPI.ai key, key pool, or key file path
  *   TAVILY_API_KEY                          - Tavily key, key pool, or key file path
+ *   EXA_API_KEY                             - Exa key, key pool, or key file path
  *   CLAUDE_WEB_HOOKS_SEARCH_MODE            - `fallback` or `parallel` (default: `parallel`)
  *   CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS       - comma-separated provider order (default: `tavily,websearchapi`)
+ *   CLAUDE_WEB_HOOKS_SEARCH_PRIMARY         - optional priority override for provider ordering
  *   CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT         - default search timeout in seconds (default: 55)
  *   TAVILY_SEARCH_TIMEOUT                   - Tavily-specific search timeout override in seconds
  *   EXA_SEARCH_TIMEOUT                      - Exa-specific search timeout override in seconds
@@ -55,7 +58,7 @@ function debugLog(message) {
 }
 
 function hasAnySearchProviderConfigured() {
-  return Boolean(process.env.WEBSEARCHAPI_API_KEY || process.env.TAVILY_API_KEY);
+  return Boolean(process.env.WEBSEARCHAPI_API_KEY || process.env.TAVILY_API_KEY || process.env.EXA_API_KEY);
 }
 
 function outputSuccess(query, policyResult) {

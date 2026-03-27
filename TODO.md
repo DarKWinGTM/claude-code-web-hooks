@@ -1,6 +1,6 @@
 # Claude Code Web Hooks - TODO
 
-> **Last Updated:** 2026-03-24
+> **Last Updated:** 2026-03-27
 
 ---
 
@@ -20,13 +20,13 @@
 ## 📋 Tasks To Do
 
 ### Documentation / Planning
-- [ ] Refine standalone project scope and installation model
+- [x] Refine standalone project scope and installation model
 - [x] Decide final file layout for `hooks/`, `src/`, and `install/`
 - [x] Define configuration strategy for user-scope vs project-scope installation
 
 ### Extraction / Implementation
-- [ ] Extract current WebSearch hook into project-owned implementation files
-- [ ] Extract current WebFetch scraper hook into project-owned implementation files
+- [x] Extract current WebSearch hook into project-owned implementation files
+- [x] Extract current WebFetch scraper hook into project-owned implementation files
 - [x] Move shared helper logic into reusable modules
 - [x] Add installer/update script for safe `settings.json` merge
 - [x] Add uninstaller for project-owned hook removal
@@ -45,8 +45,8 @@
 - [x] Wire WebSearch flow to use provider policy instead of hardcoded provider-specific routing
 - [x] Normalize Tavily Search responses into the project’s shared search-result format
 - [x] Extend verify coverage for multi-provider search behavior
-- [ ] Research and evaluate Exa.ai as an additional search-provider adapter
-- [ ] Decide whether Exa should be search-only first or enter a later extract-provider phase
+- [x] Research and evaluate Exa.ai as an additional search-provider adapter
+- [x] Decide whether Exa should be search-only first or enter a later extract-provider phase
 
 ### Release readiness checklist
 - [x] Add `.gitignore`
@@ -66,4 +66,5 @@
 
 | Date | Changes |
 |------|---------|
+| 2026-03-27 | Audited `design.md` and `phase/` against the current implementation, aligned wording to the active provider set (WebSearchAPI.ai, Tavily, Exa), normalized phase titles to `001`-`005`, and closed stale TODO items that had already been implemented. |
 | 2026-03-20 | Created new standalone project scaffold `claude-code-web-hooks` with initial design, changelog, and TODO to separate web hook logic from external gateway/runtime ownership. |

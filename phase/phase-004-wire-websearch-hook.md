@@ -1,4 +1,4 @@
-# Phase 040 - Wire WebSearch Hook to Provider Policy
+# Phase 004 - Wire WebSearch Hook to Provider Policy
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P4

@@ -1,4 +1,4 @@
-# Phase 020 - Add Tavily Search Adapter
+# Phase 002 - Add Tavily Search Adapter
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P2

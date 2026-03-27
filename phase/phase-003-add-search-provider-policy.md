@@ -1,4 +1,4 @@
-# Phase 030 - Add Search Provider Policy
+# Phase 003 - Add Search Provider Policy
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P3

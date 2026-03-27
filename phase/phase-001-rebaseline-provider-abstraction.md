@@ -1,4 +1,4 @@
-# Phase 010 - Rebaseline Provider Abstraction
+# Phase 001 - Rebaseline Provider Abstraction
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P1

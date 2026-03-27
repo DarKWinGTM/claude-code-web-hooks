@@ -132,7 +132,7 @@ These tables are **current planning notes**, not permanent contracts. The implem
 ### Comparison notes
 - **WebSearchAPI.ai** is currently the broadest fit for the project because the current implementation already uses it for both WebSearch substitution and WebFetch scraper fallback.
 - **Tavily** is currently the most practical second search provider because its Search and Extract APIs are clearly separated and its pricing/entry path are straightforward.
-- **Exa** looks like a serious next candidate for the search layer because it has search-focused API products plus dedicated content retrieval, but it should be integrated through the same provider abstraction layer rather than added ad hoc.
+- **Exa** is now an active search-layer provider in this repo and remains strategically interesting because it adds another provider-backed search path without changing the existing abstraction model.
 
 ### Exa.ai implementation notes
 
@@ -166,11 +166,11 @@ Exa is now integrated into the **WebSearch provider layer** of this project.
 - Research: priced separately around agent-style operations / page reads / reasoning-token usage
 
 #### Practical Exa notes for this repo
-- Exa currently looks more attractive as a **future search-layer provider** than as an immediate WebFetch replacement.
-- If Exa is added, the clean path is:
-  - add an Exa search adapter behind the shared search-provider policy
+- Exa is already integrated as a **current search-layer provider** and not used as a WebFetch replacement.
+- The clean path remains:
+  - keep Exa behind the shared search-provider policy
   - keep WebFetch extractor work separate unless there is a deliberate extract-provider expansion phase
-- Exa should not be added by bypassing the provider abstraction that was just introduced for Tavily and WebSearchAPI.ai.
+- Exa should continue to use the same provider abstraction as Tavily and WebSearchAPI.ai.
 
 ---
 

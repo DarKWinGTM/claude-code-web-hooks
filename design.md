@@ -3,7 +3,7 @@
 > **Current Version:** 0.1.2
 > **Project:** Claude Code Web Hooks
 > **Status:** Draft
-> **Last Updated:** 2026-03-24
+> **Last Updated:** 2026-03-27
 
 ---
 
@@ -48,7 +48,7 @@ Provide a reusable standalone hook layer that can be installed directly into Cla
 
 ### Current provider scope
 Current implementation scope is now split by role:
-- WebSearch path = WebSearchAPI.ai + Tavily Search
+- WebSearch path = WebSearchAPI.ai + Tavily Search + Exa Search
 - WebFetch scraper path = WebSearchAPI.ai
 
 This is a current implementation decision, not a claim that this provider set is final forever.
@@ -56,7 +56,7 @@ If a stronger provider is identified later, provider selection can be expanded w
 
 ### Current implementation goal update
 The current implementation goal is:
-- complete **Tavily Search** integration as part of a configurable multi-provider search architecture
+- stabilize the multi-provider WebSearch architecture across WebSearchAPI.ai, Tavily Search, and Exa Search
 - keep WebFetch extraction on the current stable path until a later extract-provider expansion phase is justified
 
 ---
@@ -66,7 +66,7 @@ The current implementation goal is:
 ### In scope
 - Claude Code `PreToolUse` hook for `WebSearch`
 - Claude Code `PreToolUse` hook for `WebFetch`
-- Search augmentation using WebSearchAPI.ai
+- Search augmentation using WebSearchAPI.ai, Tavily Search, and Exa Search
 - Auto-detection for fetch-readable vs CSR-heavy pages before scraper fallback
 - Optional key-pool support for multiple API keys
 - Standalone hook scripts under `~/.claude/hooks/` or project-scoped equivalents
@@ -99,8 +99,8 @@ Native tool continuation OR custom provider call
 #### 1) WebSearch hook
 Role:
 - intercept Claude Code `WebSearch`
-- when a WebSearchAPI key exists, perform custom search substitution
-- when no key exists, exit cleanly and allow native WebSearch flow to continue
+- when one or more supported provider keys exist, perform custom search substitution through provider policy
+- when no provider key exists, exit cleanly and allow native WebSearch flow to continue
 
 Contract:
 - `WebSearch = source discovery`
@@ -189,20 +189,22 @@ Current policy:
 Current mode: **fully permissive fallback**
 
 ### Multi-provider direction
-The next architectural step is to separate provider policy from provider implementation.
+The current architecture now separates provider policy from provider implementation.
 
-Recommended future split:
+Current split:
 - search provider adapters
   - WebSearchAPI.ai Search
   - Tavily Search
+  - Exa Search
 - extraction provider adapters
   - WebSearchAPI.ai Scrape
   - Tavily Extract (future candidate)
+  - Exa content/extract path (not currently wired)
 - provider policy layer
   - `fallback`
   - `parallel`
 
-Current default after Tavily Search integration:
+Current default search behavior:
 - `WebSearch`: `parallel`
   - provider order: `tavily,websearchapi`
   - all successful provider results are returned in the final hook output
@@ -212,13 +214,13 @@ Current default after Tavily Search integration:
 
 This keeps the project resilient while preferring provider redundancy before native fallback.
 
-### Additional provider candidate: Exa.ai
-Exa now looks like a plausible future search-provider candidate for this project.
+### Exa in the current architecture
+Exa is now an active search-provider adapter in this project.
 
-Near-term recommendation:
-- keep Exa in the search-layer roadmap, not the WebFetch layer yet
-- if added, integrate it through the existing shared search-provider abstraction and policy layer
-- do not add Exa by bypassing the current provider architecture
+Current recommendation:
+- keep Exa in the search layer, not the WebFetch layer
+- continue routing Exa through the shared search-provider abstraction and policy layer
+- do not bypass the current provider architecture for Exa-specific behavior
 
 ---
 
@@ -245,26 +247,53 @@ Recommended project layout:
 
 ```text
 claude-code-web-hooks/
+  README.md
   design.md
   changelog.md
   TODO.md
   settings.example.json
+  install.sh
+  uninstall.sh
+  verify.sh
+  apikey.example.json
+  apikeys.example.txt
+  fixtures/
+    article-readable.html
+    template-heavy.html
+    browser-shell.html
   hooks/
     websearch-custom.cjs
     webfetch-scraper.cjs
     shared/
       failure-policy.cjs
-  install/
-  src/
+      search-provider-contract.cjs
+      search-provider-policy.cjs
+      search-providers/
+        websearchapi.cjs
+        tavily.cjs
+        exa.cjs
+  phase/
+    SUMMARY.md
+    phase-001-rebaseline-provider-abstraction.md
+    phase-002-add-tavily-search-adapter.md
+    phase-003-add-search-provider-policy.md
+    phase-004-wire-websearch-hook.md
+    phase-005-verify-docs-and-release-sync.md
 ```
 
 Current scaffold now includes:
+- `README.md`
 - `design.md`
 - `changelog.md`
 - `TODO.md`
 - `settings.example.json`
+- `install.sh`
+- `uninstall.sh`
+- `verify.sh`
 - `hooks/websearch-custom.cjs`
 - `hooks/webfetch-scraper.cjs`
+- shared provider helpers and search-provider adapters under `hooks/shared/`
+- fixtures and phase-planning docs for verification/documentation sync
 
 ---
 
@@ -289,11 +318,12 @@ Replace:
 with the real absolute path on your machine.
 
 ### 5) Optional environment configuration
-If you set `WEBSEARCHAPI_API_KEY`, the custom hooks can take over:
-- `WebSearch` → WebSearchAPI.ai search substitution
-- `WebFetch` → auto-detect + scraper fallback for CSR-heavy pages
+If you set one or more supported provider keys, the custom hooks can take over:
+- `WEBSEARCHAPI_API_KEY` → WebSearchAPI.ai search + WebFetch scraper fallback
+- `TAVILY_API_KEY` → Tavily Search
+- `EXA_API_KEY` → Exa Search
 
-`WEBSEARCHAPI_API_KEY` supports two input modes:
+Each search-provider key supports two input modes:
 - inline key or inline pool, e.g. `key1|key2|key3`
 - local file path pointing to either:
   - a JSON array file, e.g. `/path/to/apikey.json`
@@ -322,8 +352,10 @@ In both inline-pool and file-pool mode, the hooks:
 - try one key first
 - automatically try the next key when a request fails
 
-If you do not set the key:
+If you do not set any supported search-provider key:
 - `WebSearch` hook exits cleanly and allows native flow
+
+If you do not set `WEBSEARCHAPI_API_KEY`:
 - `WebFetch` hook exits cleanly and allows native flow
 
 ---
