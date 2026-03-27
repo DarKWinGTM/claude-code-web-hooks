@@ -39,6 +39,7 @@ This tool increases the practical usefulness of Claude Code in two ways:
 - Current built-in providers:
   - WebSearchAPI.ai
   - Tavily Search
+  - Exa Search
 - Falls through to native Claude Code WebSearch when custom execution should not take over
 - Supports API key pools, file-based keys, and automatic next-key fallback
 - Supports provider policy modes such as `fallback` and `parallel`
@@ -97,6 +98,27 @@ Practical usage notes from the current Tavily pricing page:
 - the API key is obtained from the Tavily dashboard after sign-up
 - the pricing page also mentions a student offering and email support on non-enterprise plans
 
+#### Exa
+The current pricing context for Exa is:
+
+| Product / Plan Surface | Price | Usage Basis | Notes |
+|------------------------|------:|------------:|-------|
+| Free usage | $0/mo | up to 1,000 requests/month | Entry-level free API usage |
+| Search | $7 / 1k requests | 1–10 results | +$1 / 1k additional results beyond 10 |
+| Agentic Search | $12 / 1k requests | request-based | deeper structured search mode |
+| Agentic Search + reasoning | +$3 / 1k requests | add-on | applied on top of Agentic Search reasoning usage |
+| Contents | $1 / 1k pages per content type | page-based | useful for full-page retrieval |
+| Answer | $5 / 1k answers | answer-based | direct answer generation with citations |
+| Enterprise | Custom | custom | custom QPS, rate limits, support, pricing |
+
+Practical usage notes from current Exa docs/pricing:
+- Search is positioned for agent web-search tool calls
+- Search latency is described around 100–1200 ms depending on search mode
+- Agentic Search is slower (roughly 4–30 s) but intended for deeper structured workflows
+- Contents is presented as a token-efficient full-page retrieval path
+- Enterprise mentions custom QPS, custom rate limits, and volume discounts
+- Startup and education grants are mentioned with free credit programs
+
 These tables are **current planning notes**, not permanent contracts. The implementation may change later if pricing, reliability, or capability trade-offs make another provider a better fit.
 
 ### Practical provider comparison for this repository
@@ -105,16 +127,16 @@ These tables are **current planning notes**, not permanent contracts. The implem
 |---------|------------------------|--------|------------------|---------------|--------------|-------|
 | WebSearchAPI.ai | balanced default for current WebSearch + current WebFetch scraper | Yes | Yes | strong primary + secondary fallback | predictable monthly plans | one provider can currently cover both search and scrape paths |
 | Tavily | strong search provider for Claude Code custom-endpoint workflows | Yes | Extract exists, but not yet wired here | strong search fallback / parallel provider | lower entry cost and clear PAYG path | currently integrated for search in this project |
-| Exa | promising future search provider candidate | Yes | Yes (`Contents`) | likely future search provider candidate | request-based pricing; deeper modes cost more | strongest value if we want richer search modes and content retrieval later |
+| Exa | current additional search provider in the WebSearch layer | Yes | Yes (`Contents`) | additional search provider / parallel participant | request-based pricing; deeper modes cost more | integrated for WebSearch, but not yet used in the WebFetch extractor path |
 
 ### Comparison notes
 - **WebSearchAPI.ai** is currently the broadest fit for the project because the current implementation already uses it for both WebSearch substitution and WebFetch scraper fallback.
 - **Tavily** is currently the most practical second search provider because its Search and Extract APIs are clearly separated and its pricing/entry path are straightforward.
 - **Exa** looks like a serious next candidate for the search layer because it has search-focused API products plus dedicated content retrieval, but it should be integrated through the same provider abstraction layer rather than added ad hoc.
 
-### Exa.ai candidate research
+### Exa.ai implementation notes
 
-Exa looks viable as an additional **search API provider** for this project.
+Exa is now integrated into the **WebSearch provider layer** of this project.
 
 #### Relevant Exa capabilities
 - `Search` endpoint for web search results and their contents
@@ -123,7 +145,13 @@ Exa looks viable as an additional **search API provider** for this project.
 - `Answer` endpoint for direct answers with citations
 - `Research` product for autonomous research tasks
 
-#### Why Exa is interesting here
+#### What Exa currently means in this repo
+- Exa is a **current WebSearch provider**, not just a future candidate
+- Exa participates through the shared search-provider abstraction and policy layer
+- Exa is not yet part of the current WebFetch extractor path
+- Exa should continue to be treated as a search-layer provider first unless a later extract-provider phase is explicitly introduced
+
+#### Why Exa is still strategically interesting
 - it has a search-first API surface that maps naturally to the project’s provider-abstraction direction
 - it has dedicated content retrieval pricing (`Contents`) that could matter later if the project expands beyond pure search substitution
 - docs show explicit search parameters like result count, domains, country, and content inclusion, which fits the current hook model well
@@ -246,6 +274,7 @@ claude-code-web-hooks/
       search-providers/
         websearchapi.cjs
         tavily.cjs
+        exa.cjs
 ```
 
 ---
@@ -291,7 +320,8 @@ After install:
 
 What `uninstall.sh` does:
 - removes the installed hook files from `~/.claude/hooks/`
-- removes the installed shared helper from `~/.claude/hooks/shared/`
+- removes the installed shared helpers from `~/.claude/hooks/shared/`
+- removes the installed provider adapters from `~/.claude/hooks/shared/search-providers/`
 - backs up `~/.claude/settings.json` before editing
 - removes only the `PreToolUse -> WebSearch` and `PreToolUse -> WebFetch` entries installed by this project
 - leaves unrelated Claude Code settings intact
@@ -353,6 +383,12 @@ Notes:
 - lines starting with `#` are ignored
 - inline pools and file pools are shuffled per request
 - if one key fails, the next key is tried automatically
+
+`TAVILY_API_KEY` and `EXA_API_KEY` follow the same input rules:
+- single inline key
+- inline pool using `|`
+- JSON array file path
+- newline-separated text file path
 
 ### 3) Optional env variables
 Recommended example for the **current implementation**:
@@ -531,6 +567,8 @@ What it checks:
 - example settings shape
 - fixture-based WebFetch classification
 - shared failure policy behavior
+- search provider policy availability
+- parallel-mode aggregation sanity
 
 ---
 
