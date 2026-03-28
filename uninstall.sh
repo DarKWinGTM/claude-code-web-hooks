@@ -5,16 +5,23 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_HOOK_DIR="${HOME}/.claude/hooks"
 TARGET_SHARED_DIR="${TARGET_HOOK_DIR}/shared"
 TARGET_SEARCH_PROVIDER_DIR="${TARGET_SHARED_DIR}/search-providers"
+TARGET_EXTRACT_PROVIDER_DIR="${TARGET_SHARED_DIR}/extract-providers"
 TARGET_SETTINGS="${HOME}/.claude/settings.json"
 BACKUP_DIR="${PROJECT_DIR}/backups"
 WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-custom.cjs"
 WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-scraper.cjs"
 FAILURE_POLICY_DST="${TARGET_SHARED_DIR}/failure-policy.cjs"
+PROVIDER_CONFIG_DST="${TARGET_SHARED_DIR}/provider-config.cjs"
 SEARCH_PROVIDER_CONTRACT_DST="${TARGET_SHARED_DIR}/search-provider-contract.cjs"
 SEARCH_PROVIDER_POLICY_DST="${TARGET_SHARED_DIR}/search-provider-policy.cjs"
+EXTRACT_PROVIDER_CONTRACT_DST="${TARGET_SHARED_DIR}/extract-provider-contract.cjs"
+EXTRACT_PROVIDER_POLICY_DST="${TARGET_SHARED_DIR}/extract-provider-policy.cjs"
 WEBSEARCHAPI_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/websearchapi.cjs"
 TAVILY_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/tavily.cjs"
 EXA_PROVIDER_DST="${TARGET_SEARCH_PROVIDER_DIR}/exa.cjs"
+WEBSEARCHAPI_EXTRACTOR_DST="${TARGET_EXTRACT_PROVIDER_DIR}/websearchapi.cjs"
+TAVILY_EXTRACTOR_DST="${TARGET_EXTRACT_PROVIDER_DIR}/tavily.cjs"
+EXA_EXTRACTOR_DST="${TARGET_EXTRACT_PROVIDER_DIR}/exa.cjs"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "${BACKUP_DIR}"
@@ -44,19 +51,26 @@ fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8')
 NODE
 fi
 
-rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}"
+rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${PROVIDER_CONFIG_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${EXTRACT_PROVIDER_CONTRACT_DST}" "${EXTRACT_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}" "${WEBSEARCHAPI_EXTRACTOR_DST}" "${TAVILY_EXTRACTOR_DST}" "${EXA_EXTRACTOR_DST}"
 
 printf 'Removed hooks if present:\n'
 printf '  - %s\n' "${WEBSEARCH_DST}"
 printf '  - %s\n' "${WEBFETCH_DST}"
 printf 'Removed shared helpers if present:\n'
 printf '  - %s\n' "${FAILURE_POLICY_DST}"
+printf '  - %s\n' "${PROVIDER_CONFIG_DST}"
 printf '  - %s\n' "${SEARCH_PROVIDER_CONTRACT_DST}"
 printf '  - %s\n' "${SEARCH_PROVIDER_POLICY_DST}"
-printf 'Removed provider adapters if present:\n'
+printf '  - %s\n' "${EXTRACT_PROVIDER_CONTRACT_DST}"
+printf '  - %s\n' "${EXTRACT_PROVIDER_POLICY_DST}"
+printf 'Removed search provider adapters if present:\n'
 printf '  - %s\n' "${WEBSEARCHAPI_PROVIDER_DST}"
 printf '  - %s\n' "${TAVILY_PROVIDER_DST}"
 printf '  - %s\n' "${EXA_PROVIDER_DST}"
+printf 'Removed extraction provider adapters if present:\n'
+printf '  - %s\n' "${WEBSEARCHAPI_EXTRACTOR_DST}"
+printf '  - %s\n' "${TAVILY_EXTRACTOR_DST}"
+printf '  - %s\n' "${EXA_EXTRACTOR_DST}"
 if [ -f "${TARGET_SETTINGS}" ]; then
   printf 'Updated settings:\n'
   printf '  - %s\n' "${TARGET_SETTINGS}"

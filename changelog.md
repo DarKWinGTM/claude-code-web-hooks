@@ -1,9 +1,43 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.2
+> **Current Version:** 0.1.3
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
-> **Last Updated:** 2026-03-24
+> **Last Updated:** 2026-03-28
+
+---
+
+## Version 0.1.3 - 2026-03-28
+
+### Added
+- Added a narrow low-text structured portal rule to WebFetch detection so repeated JSON-LD / metadata pages with no real body content classify as `template-heavy`
+- Added a shared WebFetch extraction-provider layer with three interchangeable backends:
+  - WebSearchAPI.ai Scrape
+  - Tavily Extract
+  - Exa Contents
+
+### Updated
+- Recorded the verified runtime finding that the installed `webfetch-scraper.cjs` matches project source exactly, confirming the earlier `template-heavy` miss was a heuristic-gap issue rather than an installation drift issue
+- Updated design / TODO / phase planning to reflect that the WebFetch template-heavy refinement slice is now implemented and verified
+- Added selectable WebFetch extraction backend support with one active backend per request, ordered fallback across the remaining providers, and native Claude `WebFetch` as the final escape hatch
+- Added install/uninstall/runtime support for the shared extraction-provider files and settings surface
+- Verified fixture coverage now confirms:
+  - `article-readable.html` → `fetch-readable`
+  - `template-heavy.html` → `template-heavy`
+  - `browser-shell.html` → `browser-render-required`
+- Ran real API smoke tests with available keys and confirmed direct extraction success for Tavily Extract and Exa Contents, plus real ordered fallback behavior in the installed hook
+
+### Notes
+- The refinement remains intentionally narrow: improve low-text structured portal detection without broadening `browser-render-required` or lowering global thresholds
+- Checked next extractor candidates for future WebFetch integration: Tavily Extract and Exa Contents look viable as documented content-extraction APIs
+- Captured the first bounded comparison notes for WebFetch backend selection:
+  - Tavily Extract is closer to the current scraper-replacement shape
+  - Exa Contents is stronger when richer extraction modes / freshness control / subpage crawling matter
+- Implementation now targets all three interchangeable WebFetch extraction backends from the first rollout:
+  - WebSearchAPI.ai Scrape
+  - Tavily Extract
+  - Exa Contents
+- WebFetch execution model is now: one active backend per request, ordered fallback across the remaining providers, and native Claude `WebFetch` as the final escape hatch
 
 ---
 

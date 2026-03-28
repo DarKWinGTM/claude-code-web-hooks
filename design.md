@@ -1,9 +1,9 @@
 # Claude Code Web Hooks - Design
 
-> **Current Version:** 0.1.2
+> **Current Version:** 0.1.3
 > **Project:** Claude Code Web Hooks
 > **Status:** Draft
-> **Last Updated:** 2026-03-27
+> **Last Updated:** 2026-03-28
 
 ---
 
@@ -140,10 +140,15 @@ Signals:
 - article body is weak or missing
 - portal/category layout dominates usable article content
 - domain heuristics indicate known template-heavy/news-portal behavior
+- low-text structured pages may still belong here when repeated metadata blocks exist but readable body content is effectively absent
 
 Action:
 - prefer scraper fallback when available
 - otherwise allow native WebFetch to continue
+
+Current implemented refinement:
+- a narrower low-text structured portal rule now catches pages with repeated JSON-LD / metadata blocks but no real body content so they classify as `template-heavy`
+- this refinement remains separate from `browser-render-required` so low-text structured portal pages are not misclassified as app shells
 
 ### C. Browser-render required
 Signals:
@@ -198,11 +203,11 @@ Current split:
   - Exa Search
 - extraction provider adapters
   - WebSearchAPI.ai Scrape
-  - Tavily Extract (future candidate)
-  - Exa content/extract path (not currently wired)
+  - Tavily Extract
+  - Exa Contents / content-extract path
 - provider policy layer
-  - `fallback`
-  - `parallel`
+  - search: `fallback`, `parallel`
+  - WebFetch extraction: ordered fallback only
 
 Current default search behavior:
 - `WebSearch`: `parallel`
@@ -214,11 +219,34 @@ Current default search behavior:
 
 This keeps the project resilient while preferring provider redundancy before native fallback.
 
+### WebFetch extraction backends
+The WebFetch extraction path now targets three interchangeable backends:
+- **WebSearchAPI.ai Scrape**
+- **Tavily Extract**
+- **Exa Contents**
+
+Current backend model:
+- one backend is chosen per request
+- if `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY` is set, that backend is tried first
+- if `PRIMARY` is not set, the first backend is chosen randomly from configured providers that have keys available
+- the remaining configured providers act as ordered fallbacks only
+- if all extraction backends fail, the hook returns to native Claude `WebFetch`
+
+Current checked capability notes:
+- **WebSearchAPI.ai Scrape** matches the project’s current hook contract directly: URL in, scraped content out, header-driven output controls, and fully permissive native fallback when extraction does not complete
+- **Tavily Extract** is a real extraction API: `POST /extract`, Bearer auth, accepts one or multiple URLs, supports `basic` / `advanced` extraction depth, supports `markdown` / `text`, supports timeout control, supports image/favicon inclusion, and supports query-driven chunk reranking via `query` + `chunks_per_source`
+- **Exa Contents** is a real content-extraction API: `POST /contents`, supports `x-api-key` or `Authorization: Bearer`, accepts URLs or IDs, supports JavaScript-rendered pages / PDFs / complex layouts, supports `text` / `highlights` / `summary`, supports freshness/livecrawl controls via `maxAgeHours`, and supports subpage crawling / section targeting
+
+Current design implication:
+- Tavily Extract is closest to the current “scraper replacement” mental model
+- Exa Contents is stronger when richer retrieval modes, summaries, highlights, freshness control, or subpage crawling matter
+- all three providers should remain interchangeable extraction backends for the same WebFetch job rather than splitting responsibilities between them
+
 ### Exa in the current architecture
 Exa is now an active search-provider adapter in this project.
 
 Current recommendation:
-- keep Exa in the search layer, not the WebFetch layer
+- keep Exa in the search layer, not the active WebFetch layer for now
 - continue routing Exa through the shared search-provider abstraction and policy layer
 - do not bypass the current provider architecture for Exa-specific behavior
 

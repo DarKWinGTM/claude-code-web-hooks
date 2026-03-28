@@ -5,10 +5,17 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 printf '== Syntax checks ==\n'
 node --check "${PROJECT_DIR}/hooks/shared/failure-policy.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/provider-config.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/search-provider-contract.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/search-provider-policy.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/extract-provider-contract.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/extract-provider-policy.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/search-providers/websearchapi.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/search-providers/tavily.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/search-providers/exa.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/extract-providers/websearchapi.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/extract-providers/tavily.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/extract-providers/exa.cjs"
 node --check "${PROJECT_DIR}/hooks/websearch-custom.cjs"
 node --check "${PROJECT_DIR}/hooks/webfetch-scraper.cjs"
 bash -n "${PROJECT_DIR}/install.sh"
@@ -101,6 +108,86 @@ websearchapi.search = async ({ query }) => ({ ok: false, error: 'quota exceeded'
   if (out.mode !== 'parallel') throw new Error('parallel mode not applied');
   if (out.successes.length !== 1) throw new Error('parallel success aggregation is incorrect');
   if (out.failures.length !== 1) throw new Error('parallel failure aggregation is incorrect');
+})();
+NODE
+
+printf '\n== WebFetch extraction provider policy check ==\n'
+PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
+const path = require('path');
+const projectDir = process.env.PROJECT_DIR_ENV;
+const policyPath = path.join(projectDir, 'hooks/shared/extract-provider-policy.cjs');
+const websearchapiPath = path.join(projectDir, 'hooks/shared/extract-providers/websearchapi.cjs');
+const tavilyPath = path.join(projectDir, 'hooks/shared/extract-providers/tavily.cjs');
+const exaPath = path.join(projectDir, 'hooks/shared/extract-providers/exa.cjs');
+
+const websearchapi = require(websearchapiPath);
+const tavily = require(tavilyPath);
+const exa = require(exaPath);
+const { executeExtractProviderPolicy } = require(policyPath);
+
+const makeResult = (provider, label) => ({
+  ok: true,
+  result: {
+    provider,
+    providerLabel: label,
+    url: 'https://example.com',
+    finalUrl: 'https://example.com',
+    title: `${label} title`,
+    content: `${label} content`,
+    contentFormat: 'markdown',
+    raw: null,
+  },
+});
+
+(async () => {
+  process.env.CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_MODE = 'fallback';
+  process.env.CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PROVIDERS = 'websearchapi,tavily,exa';
+  process.env.WEBSEARCHAPI_API_KEY = 'w';
+  process.env.TAVILY_API_KEY = 't';
+  process.env.EXA_API_KEY = 'e';
+
+  websearchapi.extract = async () => ({ ok: false, error: 'quota exceeded' });
+  tavily.extract = async () => makeResult('tavily', 'Tavily Extract');
+  exa.extract = async () => makeResult('exa', 'Exa Contents');
+
+  process.env.CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY = 'websearchapi';
+  const primaryWebsearchapi = await executeExtractProviderPolicy({ url: 'https://example.com', debugLog: () => {} });
+  if (!primaryWebsearchapi.success) throw new Error('PRIMARY=websearchapi should fallback to next provider');
+  if (primaryWebsearchapi.result.provider !== 'tavily') throw new Error('PRIMARY=websearchapi fallback order incorrect');
+
+  process.env.CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY = 'tavily';
+  const primaryTavily = await executeExtractProviderPolicy({ url: 'https://example.com', debugLog: () => {} });
+  if (!primaryTavily.success || primaryTavily.result.provider !== 'tavily') throw new Error('PRIMARY=tavily should succeed first');
+
+  tavily.extract = async () => ({ ok: false, error: 'timeout' });
+  exa.extract = async () => makeResult('exa', 'Exa Contents');
+  process.env.CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY = 'exa';
+  const primaryExa = await executeExtractProviderPolicy({ url: 'https://example.com', debugLog: () => {} });
+  if (!primaryExa.success || primaryExa.result.provider !== 'exa') throw new Error('PRIMARY=exa should succeed first');
+
+  delete process.env.CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY;
+  const originalRandom = Math.random;
+  Math.random = () => 0.99;
+  const randomSelection = await executeExtractProviderPolicy({ url: 'https://example.com', debugLog: () => {} });
+  Math.random = originalRandom;
+  if (!randomSelection.success || randomSelection.selectedProvider !== 'exa') throw new Error('random selection should choose available provider when PRIMARY is unset');
+
+  websearchapi.extract = async () => ({ ok: false, error: 'quota exceeded' });
+  tavily.extract = async () => ({ ok: false, error: 'timeout' });
+  exa.extract = async () => ({ ok: false, error: 'auth failed' });
+  process.env.CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY = 'websearchapi';
+  const allFail = await executeExtractProviderPolicy({ url: 'https://example.com', debugLog: () => {} });
+  if (allFail.success) throw new Error('all providers failing should not report success');
+  if (allFail.failures.length !== 3) throw new Error('all provider failures should be captured');
+
+  console.log(JSON.stringify({
+    available: typeof executeExtractProviderPolicy === 'function',
+    primaryWebsearchapiWinner: primaryWebsearchapi.result.provider,
+    primaryTavilyWinner: primaryTavily.result.provider,
+    primaryExaWinner: primaryExa.result.provider,
+    randomSelectedProvider: randomSelection.selectedProvider,
+    allFailureCount: allFail.failures.length,
+  }, null, 2));
 })();
 NODE
 

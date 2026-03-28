@@ -211,9 +211,16 @@ Provider-selection relationship:
 Current behavior:
 - fetch-readable page → allow native WebFetch
 - unsupported/probe-unusable → allow native WebFetch
-- no key for scraper path → allow native WebFetch
-- scraper fallback success → use scraper result
-- scraper fallback failure (including exhausted key pool) → allow native WebFetch
+- if extraction is recommended, the hook supports three interchangeable extraction backends:
+  - WebSearchAPI.ai Scrape
+  - Tavily Extract
+  - Exa Contents
+- one backend is chosen per request
+  - if `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY` is set, it is tried first
+  - if `PRIMARY` is not set, the initial backend is chosen randomly from configured providers that have keys available
+- if the chosen backend fails, the hook rotates through the remaining configured providers in fallback order
+- if all extraction backends fail (including exhausted key pools), allow native WebFetch
+- on success, return exactly one extracted content result from the winning backend
 
 ### Shared helper
 Failure classification is shared by both hooks:
@@ -269,9 +276,16 @@ claude-code-web-hooks/
     webfetch-scraper.cjs
     shared/
       failure-policy.cjs
+      provider-config.cjs
       search-provider-contract.cjs
       search-provider-policy.cjs
+      extract-provider-contract.cjs
+      extract-provider-policy.cjs
       search-providers/
+        websearchapi.cjs
+        tavily.cjs
+        exa.cjs
+      extract-providers/
         websearchapi.cjs
         tavily.cjs
         exa.cjs
@@ -292,7 +306,8 @@ cd claude-code-web-hooks
 What `install.sh` does:
 - copies hook files into `~/.claude/hooks/`
 - copies the shared helpers into `~/.claude/hooks/shared/`
-- copies the provider adapters into `~/.claude/hooks/shared/search-providers/`
+- copies the search provider adapters into `~/.claude/hooks/shared/search-providers/`
+- copies the extraction provider adapters into `~/.claude/hooks/shared/extract-providers/`
 - backs up `~/.claude/settings.json` before editing
 - merges the required `PreToolUse -> WebSearch`
 - merges the required `PreToolUse -> WebFetch`
@@ -306,9 +321,10 @@ After install:
 
 1. Copy the hook files into `~/.claude/hooks/`
 2. Copy the shared helpers into `~/.claude/hooks/shared/`
-3. Copy the provider adapters into `~/.claude/hooks/shared/search-providers/`
-4. Merge the `hooks` block from `settings.example.json` into `~/.claude/settings.json`
-5. Add the env variables you want to use (`WEBSEARCHAPI_API_KEY`, `TAVILY_API_KEY`, and/or `EXA_API_KEY`)
+3. Copy the search provider adapters into `~/.claude/hooks/shared/search-providers/`
+4. Copy the extraction provider adapters into `~/.claude/hooks/shared/extract-providers/`
+5. Merge the `hooks` block from `settings.example.json` into `~/.claude/settings.json`
+6. Add the env variables you want to use (`WEBSEARCHAPI_API_KEY`, `TAVILY_API_KEY`, and/or `EXA_API_KEY`)
 
 ---
 
@@ -321,7 +337,8 @@ After install:
 What `uninstall.sh` does:
 - removes the installed hook files from `~/.claude/hooks/`
 - removes the installed shared helpers from `~/.claude/hooks/shared/`
-- removes the installed provider adapters from `~/.claude/hooks/shared/search-providers/`
+- removes the installed search provider adapters from `~/.claude/hooks/shared/search-providers/`
+- removes the installed extraction provider adapters from `~/.claude/hooks/shared/extract-providers/`
 - backs up `~/.claude/settings.json` before editing
 - removes only the `PreToolUse -> WebSearch` and `PreToolUse -> WebFetch` entries installed by this project
 - leaves unrelated Claude Code settings intact
@@ -337,9 +354,9 @@ The hook commands should point to the real installed paths under `~/.claude/hook
 
 ### 2) Configure API keys
 The project currently uses **separate provider keys**:
-- `WEBSEARCHAPI_API_KEY` for WebSearchAPI.ai
-- `TAVILY_API_KEY` for Tavily
-- `EXA_API_KEY` for Exa
+- `WEBSEARCHAPI_API_KEY` for WebSearchAPI.ai Search + WebSearchAPI.ai Scrape
+- `TAVILY_API_KEY` for Tavily Search + Tavily Extract
+- `EXA_API_KEY` for Exa Search + Exa Contents
 
 `WEBSEARCHAPI_API_KEY` supports:
 
@@ -394,12 +411,16 @@ Notes:
 Recommended example for the **current implementation**:
 
 > Important:
-> - Tavily does **not** use `WEBSEARCHAPI_API_KEY`
-> - use `TAVILY_API_KEY` for Tavily authentication
-> - current default behavior in code is already:
+> - WebFetch supports three interchangeable extraction backends:
+>   - `websearchapi`
+>   - `tavily`
+>   - `exa`
+> - if `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY` is set, it is tried first
+> - if `PRIMARY` is not set, the first extraction backend is chosen randomly from providers that have keys available
+> - fallback then continues through the remaining available providers
+> - current default search behavior in code is still:
 >   - `CLAUDE_WEB_HOOKS_SEARCH_MODE=parallel`
 >   - `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS=tavily,websearchapi`
-> - you can still set them explicitly if you want the config to be self-documenting
 
 ```json
 {
@@ -408,6 +429,7 @@ Recommended example for the **current implementation**:
     "CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS": "tavily,websearchapi",
     "WEBSEARCHAPI_API_KEY": "/absolute/path/to/apikeys.txt",
     "TAVILY_API_KEY": "/absolute/path/to/tavily-keys.txt",
+    "EXA_API_KEY": "/absolute/path/to/exa-keys.txt",
     "WEBSEARCHAPI_MAX_RESULTS": "10",
     "WEBSEARCHAPI_INCLUDE_CONTENT": "1",
     "WEBSEARCHAPI_COUNTRY": "us",
@@ -415,8 +437,16 @@ Recommended example for the **current implementation**:
     "TAVILY_SEARCH_DEPTH": "advanced",
     "TAVILY_MAX_RESULTS": "10",
     "TAVILY_TOPIC": "general",
-    "WEBFETCH_SCRAPER_RETURN_FORMAT": "markdown",
-    "WEBFETCH_SCRAPER_ENGINE": "browser",
+    "EXA_SEARCH_TYPE": "auto",
+    "EXA_MAX_RESULTS": "10",
+    "EXA_CATEGORY": "news",
+    "CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_MODE": "fallback",
+    "CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PROVIDERS": "websearchapi,tavily,exa",
+    "CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_TIMEOUT": "25",
+    "CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_FORMAT": "markdown",
+    "WEBSEARCHAPI_SCRAPE_ENGINE": "browser",
+    "TAVILY_EXTRACT_DEPTH": "advanced",
+    "EXA_CONTENTS_VERBOSITY": "standard",
     "CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT": "55",
     "TAVILY_SEARCH_TIMEOUT": "55",
     "EXA_SEARCH_TIMEOUT": "55",
@@ -431,16 +461,25 @@ Recommended example for the **current implementation**:
 What these keys do:
 - `CLAUDE_WEB_HOOKS_SEARCH_MODE`: search provider execution mode (`fallback` or `parallel`)
 - `CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS`: provider order for the search policy layer
-- `CLAUDE_WEB_HOOKS_SEARCH_PRIMARY`: optional priority override that moves one provider to the front of the ordered list
+- `CLAUDE_WEB_HOOKS_SEARCH_PRIMARY`: optional priority override that moves one search provider to the front of the ordered list
+- `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_MODE`: extraction backend execution mode (`fallback` only)
+- `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PROVIDERS`: ordered extraction providers for WebFetch (`websearchapi,tavily,exa`)
+- `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY`: optional preferred extraction backend to try first
+- if `PRIMARY` is not set, the hook randomly chooses the first backend from configured providers that currently have keys available
+- `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_TIMEOUT`: shared extraction timeout
+- `CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_FORMAT`: preferred extraction output format
 - `WEBSEARCHAPI_API_KEY`: WebSearchAPI.ai key / key pool / key file path
 - `TAVILY_API_KEY`: Tavily key / key pool / key file path
 - `EXA_API_KEY`: Exa key / key pool / key file path
 - `TAVILY_SEARCH_DEPTH`, `TAVILY_MAX_RESULTS`, `TAVILY_TOPIC`: Tavily Search tuning
 - `EXA_SEARCH_TYPE`, `EXA_MAX_RESULTS`, `EXA_CATEGORY`: Exa Search tuning
+- `WEBSEARCHAPI_SCRAPE_ENGINE`: WebSearchAPI.ai Scrape tuning
+- `TAVILY_EXTRACT_DEPTH`: Tavily Extract tuning
+- `EXA_CONTENTS_VERBOSITY`: Exa Contents text verbosity tuning
 - `WEBFETCH_PROBE_TIMEOUT`, `WEBFETCH_PROBE_MAX_HTML_BYTES`: initial HTML probe tuning for WebFetch detection
-- `WEBFETCH_SCRAPER_TIMEOUT`: scraper API timeout for WebFetch fallback
+- `WEBFETCH_SCRAPER_TIMEOUT`: legacy shared scraper timeout alias for backward compatibility
 - `CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT`: shared default timeout for search providers
-- `TAVILY_SEARCH_TIMEOUT`, `EXA_SEARCH_TIMEOUT`: provider-specific timeout overrides
+- `TAVILY_SEARCH_TIMEOUT`, `EXA_SEARCH_TIMEOUT`: search provider-specific timeout overrides
 - `CLAUDE_WEB_HOOKS_DEBUG`: debug logging for the hook layer
 
 ---
@@ -568,6 +607,7 @@ What it checks:
 - fixture-based WebFetch classification
 - shared failure policy behavior
 - search provider policy availability
+- WebFetch extraction provider policy selection/fallback behavior
 - parallel-mode aggregation sanity
 
 ---

@@ -64,5 +64,6 @@ Multi-provider behavior is not complete until users can install it, understand i
 - rollback: do not tag a release until verification and docs match runtime behavior
 
 ## Next possible phases
+- `phase-006-refine-webfetch-template-heavy-detection.md`
 - follow-up provider expansion
 - WebFetch extract-provider abstraction if needed later

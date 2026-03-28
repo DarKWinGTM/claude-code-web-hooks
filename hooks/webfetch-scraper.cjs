@@ -1,17 +1,24 @@
 #!/usr/bin/env node
 /**
- * Claude Code WebFetch Hook - Auto-detect CSR and fallback to WebSearchAPI scraper
+ * Claude Code WebFetch Hook - Auto-detect CSR and fallback across selectable extraction backends
  *
  * Behavior:
  *   - If URL looks fetch-readable from initial HTML: exit 0 and allow native WebFetch
- *   - If URL looks CSR-heavy / shell-heavy and WEBSEARCHAPI_API_KEY exists: scrape via WebSearchAPI.ai and return scraped content
- *   - If key is missing or scraper path fails: exit 0 and allow native WebFetch
+ *   - If URL needs extraction, try one active backend and rotate across WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents
+ *   - If all extraction backends fail: exit 0 and allow native WebFetch
  *
  * Environment Variables:
- *   WEBSEARCHAPI_API_KEY                 - WebSearchAPI.ai bearer token(s); multiple keys allowed via '|' delimiter
- *   WEBFETCH_PROBE_TIMEOUT               - Initial HTML fetch timeout in seconds (default: 12)
- *   WEBFETCH_PROBE_MAX_HTML_BYTES        - Max initial HTML bytes to inspect (default: 262144)
- *   WEBFETCH_SCRAPER_TIMEOUT             - Scraper API timeout in seconds (default: 25)
+ *   WEBSEARCHAPI_API_KEY                           - WebSearchAPI.ai bearer token(s); multiple keys allowed via '|' delimiter
+ *   TAVILY_API_KEY                                 - Tavily bearer token(s); multiple keys allowed via '|' delimiter
+ *   EXA_API_KEY                                    - Exa key(s); multiple keys allowed via '|' delimiter
+ *   CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_MODE         - fallback-only extractor mode (default: fallback)
+ *   CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PROVIDERS    - ordered extraction providers (default: websearchapi,tavily,exa)
+ *   CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_PRIMARY      - optional preferred provider to try first
+ *   CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_TIMEOUT      - shared extraction timeout in seconds (default: 25)
+ *   CLAUDE_WEB_HOOKS_WEBFETCH_EXTRACT_FORMAT       - extraction output format (default: markdown)
+ *   WEBFETCH_PROBE_TIMEOUT                         - Initial HTML fetch timeout in seconds (default: 12)
+ *   WEBFETCH_PROBE_MAX_HTML_BYTES                  - Max initial HTML bytes to inspect (default: 262144)
+ *   WEBFETCH_SCRAPER_TIMEOUT                       - Legacy shared scraper timeout alias (default: 25)
  *
  *   Backward compatibility:
  *   - `WEBFETCH_SCRAPER_TIMEOUT` (old probe timeout name) is still accepted as fallback for `WEBFETCH_PROBE_TIMEOUT`
@@ -30,17 +37,16 @@
  *   2 - Block tool and return hook-provided scraped content
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const http = require('http');
 const https = require('https');
 const { classifyProviderFailure } = require('./shared/failure-policy.cjs');
+const { parseIntegerEnv } = require('./shared/provider-config.cjs');
+const { executeExtractProviderPolicy } = require('./shared/extract-provider-policy.cjs');
+const { formatExtractProviderResult } = require('./shared/extract-provider-contract.cjs');
 
 const DEFAULT_FETCH_TIMEOUT_SEC = 12;
 const DEFAULT_SCRAPER_API_TIMEOUT_SEC = 25;
 const DEFAULT_MAX_HTML_BYTES = 262144;
-const WEBSEARCHAPI_SCRAPE_URL = 'https://api.websearchapi.ai/scrape';
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const TEMPLATE_HEAVY_HOSTS = [
   'sanook.com',
@@ -48,86 +54,6 @@ const TEMPLATE_HEAVY_HOSTS = [
   'khaosod.co.th',
 ];
 
-function looksLikeLocalPath(value) {
-  return value.startsWith('/') || value.startsWith('./') || value.startsWith('../') || value.startsWith('~/') || value.includes('/') || value.includes('\\');
-}
-
-function resolveLocalPath(rawValue) {
-  if (rawValue.startsWith('~/')) {
-    return path.join(os.homedir(), rawValue.slice(2));
-  }
-
-  const cwd = typeof process.cwd === 'function' ? process.cwd() : os.homedir();
-  return path.resolve(cwd, rawValue);
-}
-
-function parseInlineApiKeys(rawValue) {
-  return rawValue.split('|').map((item) => item.trim()).filter((item) => item && !item.startsWith('#'));
-}
-
-function parseApiKeys(rawValue) {
-  if (typeof rawValue !== 'string') return [];
-
-  const trimmed = rawValue.trim();
-  if (!trimmed) return [];
-
-  if (looksLikeLocalPath(trimmed)) {
-    try {
-      const resolved = resolveLocalPath(trimmed);
-      const stat = fs.statSync(resolved);
-      if (!stat.isFile()) {
-        debugLog(`WEBSEARCHAPI_API_KEY points to a non-file path: ${resolved}`);
-        return [];
-      }
-
-      const fileContent = fs.readFileSync(resolved, 'utf8');
-      try {
-        const parsed = JSON.parse(fileContent);
-        if (!Array.isArray(parsed)) {
-          debugLog(`WEBSEARCHAPI_API_KEY JSON file must contain an array: ${resolved}`);
-          return [];
-        }
-
-        return parsed.map((item) => String(item || '').trim()).filter(Boolean);
-      } catch {
-        return fileContent
-          .split(/\r?\n/)
-          .map((item) => item.trim())
-          .filter((item) => item && !item.startsWith('#'));
-      }
-    } catch (error) {
-      debugLog(`Failed to load API keys from file path: ${error.message}`);
-      return [];
-    }
-  }
-
-  return parseInlineApiKeys(trimmed);
-}
-
-function shuffleKeys(keys) {
-  const shuffled = [...keys];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
-function getApiKeyAttempts() {
-  const keys = parseApiKeys(process.env.WEBSEARCHAPI_API_KEY);
-  if (keys.length === 0) return [];
-  return shuffleKeys(keys);
-}
-
-function parseBooleanEnv(value, defaultValue = false) {
-  if (value === undefined) return defaultValue;
-  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
-}
-
-function parseIntegerEnv(value, fallback) {
-  const parsed = parseInt(String(value || ''), 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 function debugLog(message) {
   if (process.env.CLAUDE_WEB_HOOKS_DEBUG) {
@@ -194,7 +120,14 @@ function detectRenderingMode(targetUrl, html) {
   const shellPatternMatched = shellPatterns.some((pattern) => pattern.test(normalizedHtml));
   const looksLikeMetadataOnly = textLength < 450 && contentNodeCount <= 3;
   const templateHeavyHost = isTemplateHeavyHost(targetUrl);
+  const lowTextStructuredPortal =
+    jsonLdCount >= 2 &&
+    paragraphCount === 0 &&
+    contentNodeCount === 0 &&
+    !shellPatternMatched &&
+    scriptCount <= 4;
   const portalHeavy =
+    lowTextStructuredPortal ||
     (textLength >= 5000 && paragraphCount <= 2 && articleCount === 0) ||
     (linkCount >= 80 && paragraphCount <= 2) ||
     (jsonLdCount >= 2 && paragraphCount <= 2 && textLength >= 2000) ||
@@ -298,109 +231,18 @@ function fetchInitialHtml(targetUrl, timeoutSec = DEFAULT_FETCH_TIMEOUT_SEC, red
   });
 }
 
-function buildScraperHeaders(apiKey) {
-  const headers = {
-    'Authorization': `Bearer ${apiKey}`,
-    'Content-Type': 'application/json',
-    'X-Return-Format': process.env.WEBFETCH_SCRAPER_RETURN_FORMAT || 'markdown',
-    'X-Engine': process.env.WEBFETCH_SCRAPER_ENGINE || 'browser',
-  };
-
-  if (process.env.WEBFETCH_SCRAPER_TARGET_SELECTOR) {
-    headers['X-Target-Selector'] = process.env.WEBFETCH_SCRAPER_TARGET_SELECTOR;
-  }
-
-  if (process.env.WEBFETCH_SCRAPER_REMOVE_SELECTOR) {
-    headers['X-Remove-Selector'] = process.env.WEBFETCH_SCRAPER_REMOVE_SELECTOR;
-  }
-
-  if (parseBooleanEnv(process.env.WEBFETCH_SCRAPER_WITH_LINKS_SUMMARY, false)) {
-    headers['X-With-Links-Summary'] = 'true';
-  }
-
-  if (parseBooleanEnv(process.env.WEBFETCH_SCRAPER_WITH_GENERATED_ALT, false)) {
-    headers['X-With-Generated-Alt'] = 'true';
-  }
-
-  return headers;
-}
-
-function scrapeUrl(targetUrl, apiKey, timeoutSec = DEFAULT_SCRAPER_API_TIMEOUT_SEC) {
-  return new Promise((resolve) => {
-    const payload = JSON.stringify({ url: targetUrl });
-    const request = https.request(WEBSEARCHAPI_SCRAPE_URL, {
-      method: 'POST',
-      headers: buildScraperHeaders(apiKey),
-      timeout: timeoutSec * 1000,
-    }, (response) => {
-      let raw = '';
-      response.setEncoding('utf8');
-      response.on('data', (chunk) => { raw += chunk; });
-      response.on('end', () => {
-        let data;
-        try {
-          data = raw ? JSON.parse(raw) : {};
-        } catch (error) {
-          resolve({ ok: false, error: `invalid JSON from scraper: ${error.message}` });
-          return;
-        }
-
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          const apiError = data?.error || data?.message || `HTTP ${response.statusCode}`;
-          resolve({ ok: false, error: apiError, data });
-          return;
-        }
-
-        const scraped = data?.data || {};
-        const content = String(scraped.content || '').trim();
-        if (!content) {
-          resolve({ ok: false, error: 'scraper returned empty content', data });
-          return;
-        }
-
-        resolve({ ok: true, data: scraped });
-      });
-    });
-
-    request.on('timeout', () => {
-      request.destroy(new Error('timeout'));
-    });
-
-    request.on('error', (error) => {
-      resolve({ ok: false, error: error.message || 'request error' });
-    });
-
-    request.write(payload);
-    request.end();
+function outputScrapedSuccess(url, prompt, detection, policyResult) {
+  const formatted = formatExtractProviderResult({
+    url,
+    prompt,
+    detection,
+    result: policyResult.result,
+    fallbackProviderUsed: policyResult.fallbackProviderUsed,
   });
-}
-
-function formatScrapedResult(url, prompt, detection, scraped) {
-  const lines = [
-    '[WebFetch Result via WebSearchAPI.ai Scraper]',
-    '',
-    `URL: ${scraped.url || url}`,
-    `Detection: ${detection.reason}`,
-  ];
-
-  if (prompt) {
-    lines.push(`Original WebFetch prompt: ${prompt}`);
-  }
-
-  if (scraped.title) {
-    lines.push(`Title: ${scraped.title}`);
-  }
-
-  lines.push('', String(scraped.content || '').trim(), '', '---', 'Use this scraped content instead of the original WebFetch result.');
-  return lines.join('\n');
-}
-
-function outputScrapedSuccess(url, prompt, detection, scraped) {
-  const formatted = formatScrapedResult(url, prompt, detection, scraped);
   const output = {
     decision: 'block',
-    reason: 'WebFetch replaced with WebSearchAPI.ai scraper result',
-    systemMessage: `[WebFetch hook] class=${detection.classification} -> scraper-fallback`,
+    reason: `WebFetch replaced with ${policyResult.result.providerLabel} result`,
+    systemMessage: `[WebFetch hook] class=${detection.classification} -> scraper-fallback (${policyResult.result.provider})`,
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'deny',
@@ -462,26 +304,18 @@ async function processHook() {
       outputAllowContinuation(`[WebFetch hook] class=${detection.classification} -> native-webfetch`);
     }
 
-    const apiKeys = getApiKeyAttempts();
-    if (apiKeys.length === 0) {
-      debugLog(`${detection.classification} detected but no WEBSEARCHAPI_API_KEY configured for ${targetUrl}`);
-      outputAllowContinuation(`[WebFetch hook] class=${detection.classification} -> native-webfetch (no-key)`);
+    debugLog(`${detection.classification} detected for ${targetUrl}; using extractor-provider fallback (${detection.reason})`);
+    const result = await executeExtractProviderPolicy({ url: targetUrl, debugLog });
+    if (result.success && result.result) {
+      outputScrapedSuccess(targetUrl, prompt, detection, result);
     }
 
-    debugLog(`${detection.classification} detected for ${targetUrl}; using scraper fallback (${detection.reason})`);
-    const errors = [];
-    for (const apiKey of apiKeys) {
-      const scraped = await scrapeUrl(targetUrl, apiKey, parseIntegerEnv(process.env.WEBFETCH_SCRAPER_TIMEOUT || process.env.WEBFETCH_SCRAPER_API_TIMEOUT, DEFAULT_SCRAPER_API_TIMEOUT_SEC));
-      if (scraped.ok) {
-        outputScrapedSuccess(targetUrl, prompt, detection, scraped.data);
-      }
-
-      errors.push(scraped.error || 'unknown error');
-      debugLog(`Scraper fallback attempt failed for ${targetUrl}; trying next key if available: ${scraped.error || 'unknown error'}`);
-    }
-
-    const summarizedFailureClass = classifyProviderFailure(errors[0] || '');
-    outputAllowContinuation(`[WebFetch hook] class=${detection.classification} -> native-webfetch (scraper-fallback-failed:${summarizedFailureClass})`);
+    const firstFailure = result.failures?.[0]?.error || result.error || 'unknown error';
+    const summarizedFailureClass = classifyProviderFailure(firstFailure);
+    const providerNote = result.providersTried && result.providersTried.length > 0
+      ? `providers:${result.providersTried.join(',')}`
+      : 'no-provider';
+    outputAllowContinuation(`[WebFetch hook] class=${detection.classification} -> native-webfetch (scraper-fallback-failed:${summarizedFailureClass};${providerNote})`);
   } catch (error) {
     debugLog(`Hook parse/runtime error: ${error.message || String(error)}`);
     process.exit(0);
