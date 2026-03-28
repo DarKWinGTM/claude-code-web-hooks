@@ -48,7 +48,11 @@ This tool increases the practical usefulness of Claude Code in two ways:
 - Probes the initial HTML first
 - Allows native WebFetch for fetch-readable pages
 - Detects template-heavy / portal-heavy / browser-render-required pages
-- Uses WebSearchAPI scraper fallback only when needed
+- Uses one selectable extraction backend per request when extraction is needed
+- Supports ordered fallback across:
+  - WebSearchAPI.ai Scrape
+  - Tavily Extract
+  - Exa Contents
 - Falls through to native WebFetch when custom execution is unavailable or unsuccessful
 
 ### Current provider targeting
@@ -57,13 +61,15 @@ Current implementation status:
   - WebSearchAPI.ai
   - Tavily Search
   - Exa Search
-- **WebFetch** currently uses:
-  - WebSearchAPI.ai scraper fallback
+- **WebFetch** supports:
+  - WebSearchAPI.ai Scrape
+  - Tavily Extract
+  - Exa Contents
 
-Planned direction:
-- the project should remain open to supporting other search APIs in the future
-- if a better search provider is identified later, the provider layer can be extended without changing the core Claude Code hook model
-- in other words, the project is moving from **provider-specific implementation** toward **provider-agnostic architecture**
+Current direction:
+- the project keeps the same Claude Code hook model while expanding both search and extraction provider support
+- provider choice can evolve without changing the core Claude Code hook entrypoints
+- in other words, the project has moved from **provider-specific implementation** toward **provider-agnostic architecture**
 
 ### Current provider plan snapshot
 
@@ -125,9 +131,9 @@ These tables are **current planning notes**, not permanent contracts. The implem
 
 | Provider | Best fit in this repo | Search | Extract / Scrape | Fallback role | Cost profile | Notes |
 |---------|------------------------|--------|------------------|---------------|--------------|-------|
-| WebSearchAPI.ai | balanced default for current WebSearch + current WebFetch scraper | Yes | Yes | strong primary + secondary fallback | predictable monthly plans | one provider can currently cover both search and scrape paths |
-| Tavily | strong search provider for Claude Code custom-endpoint workflows | Yes | Extract exists, but not yet wired here | strong search fallback / parallel provider | lower entry cost and clear PAYG path | currently integrated for search in this project |
-| Exa | current additional search provider in the WebSearch layer | Yes | Yes (`Contents`) | additional search provider / parallel participant | request-based pricing; deeper modes cost more | integrated for WebSearch, but not yet used in the WebFetch extractor path |
+| WebSearchAPI.ai | balanced default for current WebSearch + one current WebFetch extraction backend | Yes | Yes | interchangeable search/extraction backend | predictable monthly plans | one provider can cover both search and extraction paths |
+| Tavily | strong search provider for Claude Code custom-endpoint workflows | Yes | Yes (`Extract`) | interchangeable search/extraction backend | lower entry cost and clear PAYG path | now supported in both search and WebFetch extraction flow |
+| Exa | current additional provider with stronger retrieval-oriented content features | Yes | Yes (`Contents`) | interchangeable search/extraction backend | request-based pricing; deeper modes cost more | supported in both search and WebFetch extraction flow |
 
 ### Comparison notes
 - **WebSearchAPI.ai** is currently the broadest fit for the project because the current implementation already uses it for both WebSearch substitution and WebFetch scraper fallback.
@@ -146,10 +152,10 @@ Exa is now integrated into the **WebSearch provider layer** of this project.
 - `Research` product for autonomous research tasks
 
 #### What Exa currently means in this repo
-- Exa is a **current WebSearch provider**, not just a future candidate
+- Exa is a **current WebSearch provider**
 - Exa participates through the shared search-provider abstraction and policy layer
-- Exa is not yet part of the current WebFetch extractor path
-- Exa should continue to be treated as a search-layer provider first unless a later extract-provider phase is explicitly introduced
+- Exa Contents is also part of the current WebFetch extraction backend set
+- in WebFetch, Exa is one interchangeable extraction backend among the three supported providers
 
 #### Why Exa is still strategically interesting
 - it has a search-first API surface that maps naturally to the project’s provider-abstraction direction
