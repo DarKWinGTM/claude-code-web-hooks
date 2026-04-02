@@ -303,13 +303,15 @@ claude-code-web-hooks/
 
 ### Option 1 — automatic install
 
+Current installer supports multiple targets.
+
 ```bash
 git clone <your-repo-url>
 cd claude-code-web-hooks
-./install.sh
+./install.sh --target claude-code
 ```
 
-What `install.sh` does:
+What `install.sh` currently does for `claude-code`:
 - copies hook files into `~/.claude/hooks/`
 - copies the shared helpers into `~/.claude/hooks/shared/`
 - copies the search provider adapters into `~/.claude/hooks/shared/search-providers/`
@@ -323,8 +325,36 @@ After install:
 - open `/hooks` in Claude Code to reload configuration
 - or restart the Claude Code session
 
+### Target-aware install modes
+The installer / uninstaller / verifier now support these targets:
+- `claude-code`
+- `copilot-vscode`
+- `all`
+
+Current direction:
+- keep the current Claude Code path working
+- add Copilot-on-VS-Code compatibility through runtime-specific wrapper/config placement
+- allow `all` so both targets can be installed together from one command
+- keep the model open to additional targets later, rather than freezing it as a dual-target-only design
+
+Examples:
+```bash
+./install.sh --target claude-code
+./install.sh --target copilot-vscode
+./install.sh --target all
+
+./uninstall.sh --target claude-code
+./uninstall.sh --target copilot-vscode
+./uninstall.sh --target all
+
+./verify.sh --target claude-code
+./verify.sh --target copilot-vscode
+./verify.sh --target all
+```
+
 ### Option 2 — manual install
 
+#### Claude Code
 1. Copy the hook files into `~/.claude/hooks/`
 2. Copy the shared helpers into `~/.claude/hooks/shared/`
 3. Copy the search provider adapters into `~/.claude/hooks/shared/search-providers/`
@@ -332,22 +362,39 @@ After install:
 5. Merge the `hooks` block from `settings.example.json` into `~/.claude/settings.json`
 6. Add the env variables you want to use (`WEBSEARCHAPI_API_KEY`, `TAVILY_API_KEY`, and/or `EXA_API_KEY`)
 
+#### Copilot on VS Code
+1. Copy the wrapper hooks:
+   - `hooks/copilot-websearch.cjs`
+   - `hooks/copilot-webfetch.cjs`
+2. Keep the shared core logic available in the same repo/workspace
+3. Add a hook config file in one supported Copilot location, for example:
+   - workspace: `.github/hooks/claude-code-web-hooks.json`
+   - user: `~/.copilot/hooks/claude-code-web-hooks.json`
+4. Point the hook commands at the Copilot wrapper scripts
+5. Set `COPILOT_WEBSEARCH_TOOL_NAMES` and `COPILOT_WEBFETCH_TOOL_NAMES` to the tool names you want the wrappers to intercept
+
+#### All
+Install both the Claude Code path and the Copilot-on-VS-Code path together.
+
 ---
 
 ## How to uninstall
 
 ```bash
-./uninstall.sh
+./uninstall.sh --target claude-code
 ```
 
-What `uninstall.sh` does:
-- removes the installed hook files from `~/.claude/hooks/`
-- removes the installed shared helpers from `~/.claude/hooks/shared/`
-- removes the installed search provider adapters from `~/.claude/hooks/shared/search-providers/`
-- removes the installed extraction provider adapters from `~/.claude/hooks/shared/extract-providers/`
-- backs up `~/.claude/settings.json` before editing
-- removes only the `PreToolUse -> WebSearch` and `PreToolUse -> WebFetch` entries installed by this project
-- leaves unrelated Claude Code settings intact
+What `uninstall.sh` now does depends on target:
+- `claude-code`
+  - removes installed hooks from `~/.claude/hooks/`
+  - removes installed shared helpers / provider adapters from `~/.claude/hooks/shared/`
+  - backs up and updates `~/.claude/settings.json`
+- `copilot-vscode`
+  - removes Copilot compatibility wrappers from `~/.claude/hooks/`
+  - removes the user-level Copilot hook config from `~/.copilot/hooks/`
+  - leaves the workspace example hook file in the repo
+- `all`
+  - removes both target paths together
 
 ---
 
@@ -357,6 +404,12 @@ What `uninstall.sh` does:
 Use `settings.example.json` as the base example.
 
 The hook commands should point to the real installed paths under `~/.claude/hooks/` after running `install.sh`.
+
+For Copilot on VS Code, use the runtime-specific wrapper scripts instead:
+- `hooks/copilot-websearch.cjs`
+- `hooks/copilot-webfetch.cjs`
+
+These wrappers exist because Copilot currently has different tool names / tool-input shapes and ignores Claude matcher values.
 
 ### 2) Configure API keys
 The project currently uses **separate provider keys**:
@@ -486,6 +539,8 @@ What these keys do:
 - `WEBFETCH_SCRAPER_TIMEOUT`: legacy shared scraper timeout alias for backward compatibility
 - `CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT`: shared default timeout for search providers
 - `TAVILY_SEARCH_TIMEOUT`, `EXA_SEARCH_TIMEOUT`: search provider-specific timeout overrides
+- `COPILOT_WEBSEARCH_TOOL_NAMES`: comma-separated Copilot tool names that the WebSearch wrapper should intercept
+- `COPILOT_WEBFETCH_TOOL_NAMES`: comma-separated Copilot tool names that the WebFetch wrapper should intercept
 - `CLAUDE_WEB_HOOKS_DEBUG`: debug logging for the hook layer
 
 ---
@@ -614,6 +669,7 @@ What it checks:
 - shared failure policy behavior
 - search provider policy availability
 - WebFetch extraction provider policy selection/fallback behavior
+- Copilot wrapper basic compatibility path
 - parallel-mode aggregation sanity
 
 ---

@@ -1,7 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+TARGET="all"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target)
+      TARGET="${2:-}"
+      shift 2
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+case "$TARGET" in
+  claude-code|copilot-vscode|all) ;;
+  *)
+    echo "Unsupported target: $TARGET" >&2
+    echo "Expected one of: claude-code, copilot-vscode, all" >&2
+    exit 1
+    ;;
+esac
+
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERIFY_CLAUDE=0
+VERIFY_COPILOT=0
+case "$TARGET" in
+  claude-code)
+    VERIFY_CLAUDE=1
+    ;;
+  copilot-vscode)
+    VERIFY_COPILOT=1
+    ;;
+  all)
+    VERIFY_CLAUDE=1
+    VERIFY_COPILOT=1
+    ;;
+esac
 
 printf '== Syntax checks ==\n'
 node --check "${PROJECT_DIR}/hooks/shared/failure-policy.cjs"
@@ -18,11 +55,30 @@ node --check "${PROJECT_DIR}/hooks/shared/extract-providers/tavily.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/extract-providers/exa.cjs"
 node --check "${PROJECT_DIR}/hooks/websearch-custom.cjs"
 node --check "${PROJECT_DIR}/hooks/webfetch-scraper.cjs"
+if [ "$VERIFY_COPILOT" -eq 1 ]; then
+  node --check "${PROJECT_DIR}/hooks/copilot-websearch.cjs"
+  node --check "${PROJECT_DIR}/hooks/copilot-webfetch.cjs"
+fi
 bash -n "${PROJECT_DIR}/install.sh"
 bash -n "${PROJECT_DIR}/uninstall.sh"
 
 printf '\n== Example config check ==\n'
-jq -e '.hooks.PreToolUse | length >= 2' "${PROJECT_DIR}/settings.example.json" >/dev/null
+PROJECT_DIR_ENV="${PROJECT_DIR}" VERIFY_COPILOT_ENV="$VERIFY_COPILOT" node - <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const projectDir = process.env.PROJECT_DIR_ENV;
+const verifyCopilot = process.env.VERIFY_COPILOT_ENV === '1';
+const settings = JSON.parse(fs.readFileSync(path.join(projectDir, 'settings.example.json'), 'utf8'));
+if (!Array.isArray(settings?.hooks?.PreToolUse) || settings.hooks.PreToolUse.length < 2) {
+  throw new Error('settings.example.json missing Claude PreToolUse hooks');
+}
+if (verifyCopilot) {
+  if (!Array.isArray(settings?.copilotHooksExample?.hooks?.PreToolUse) || settings.copilotHooksExample.hooks.PreToolUse.length < 2) {
+    throw new Error('settings.example.json missing Copilot PreToolUse hook example');
+  }
+}
+console.log(JSON.stringify({ claudeHookCount: settings.hooks.PreToolUse.length, copilotHookCount: settings?.copilotHooksExample?.hooks?.PreToolUse?.length || 0 }, null, 2));
+NODE
 
 printf '\n== Fixture classification check ==\n'
 PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
@@ -191,4 +247,32 @@ const makeResult = (provider, label) => ({
 })();
 NODE
 
-printf '\nAll checks passed.\n'
+if [ "$VERIFY_COPILOT" -eq 1 ]; then
+  printf '\n== Copilot wrapper check ==\n'
+  PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
+const path = require('path');
+const { spawnSync } = require('child_process');
+const projectDir = process.env.PROJECT_DIR_ENV;
+const scriptPath = path.join(projectDir, 'hooks/copilot-webfetch.cjs');
+const payload = JSON.stringify({
+  tool_name: 'fetchWebPage',
+  tool_input: {
+    uri: 'https://example.com',
+    prompt: 'read page',
+  },
+  tool_use_id: 'tool-123',
+});
+const child = spawnSync('node', [scriptPath], {
+  input: payload,
+  encoding: 'utf8',
+  env: {
+    ...process.env,
+    COPILOT_WEBFETCH_TOOL_NAMES: 'fetchWebPage,readWebPage',
+  },
+});
+if (typeof child.status !== 'number') throw new Error('Copilot wrapper did not exit cleanly');
+console.log(JSON.stringify({ status: child.status, stdoutPresent: !!child.stdout }, null, 2));
+NODE
+fi
+
+printf '\nAll checks passed for target: %s\n' "$TARGET"

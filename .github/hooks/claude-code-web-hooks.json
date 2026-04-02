@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "node \"./hooks/copilot-websearch.cjs\"",
+        "timeout": 30
+      },
+      {
+        "type": "command",
+        "command": "node \"./hooks/copilot-webfetch.cjs\"",
+        "timeout": 30
+      }
+    ]
+  }
+}

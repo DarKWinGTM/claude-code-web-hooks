@@ -23,6 +23,22 @@
       }
     ]
   },
+  "copilotHooksExample": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "type": "command",
+          "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/copilot-websearch.cjs\"",
+          "timeout": 30
+        },
+        {
+          "type": "command",
+          "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/copilot-webfetch.cjs\"",
+          "timeout": 30
+        }
+      ]
+    }
+  },
   "env": {
     "CLAUDE_WEB_HOOKS_SEARCH_MODE": "parallel",
     "CLAUDE_WEB_HOOKS_SEARCH_PROVIDERS": "tavily,websearchapi",
@@ -53,6 +69,8 @@
     "WEBFETCH_PROBE_TIMEOUT": "12",
     "WEBFETCH_PROBE_MAX_HTML_BYTES": "262144",
     "WEBFETCH_SCRAPER_TIMEOUT": "25",
-    "CLAUDE_WEB_HOOKS_DEBUG": "0"
+    "CLAUDE_WEB_HOOKS_DEBUG": "0",
+    "COPILOT_WEBSEARCH_TOOL_NAMES": "webSearch,searchWeb",
+    "COPILOT_WEBFETCH_TOOL_NAMES": "fetchWebPage,readWebPage"
   }
 }

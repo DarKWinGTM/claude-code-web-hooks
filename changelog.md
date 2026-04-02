@@ -20,12 +20,17 @@
 - Recorded the verified runtime finding that the installed `webfetch-scraper.cjs` matches project source exactly, confirming the earlier `template-heavy` miss was a heuristic-gap issue rather than an installation drift issue
 - Updated design / TODO / phase planning to reflect that the WebFetch template-heavy refinement slice is now implemented and verified
 - Added selectable WebFetch extraction backend support with one active backend per request, ordered fallback across the remaining providers, and native Claude `WebFetch` as the final escape hatch
-- Added install/uninstall/runtime support for the shared extraction-provider files and settings surface
+- Added target-aware installer / uninstaller / verifier support for multiple runtime targets:
+  - `claude-code`
+  - `copilot-vscode`
+  - `all`
+- Added Copilot-on-VS-Code compatibility wrappers and target-aware example config paths
 - Verified fixture coverage now confirms:
   - `article-readable.html` → `fetch-readable`
   - `template-heavy.html` → `template-heavy`
   - `browser-shell.html` → `browser-render-required`
 - Ran real API smoke tests with available keys and confirmed direct extraction success for Tavily Extract and Exa Contents, plus real ordered fallback behavior in the installed hook
+- Verified target-aware `verify.sh --target all` passes, including the Copilot wrapper compatibility probe
 
 ### Notes
 - The refinement remains intentionally narrow: improve low-text structured portal detection without broadening `browser-render-required` or lowering global thresholds
@@ -38,6 +43,15 @@
   - Tavily Extract
   - Exa Contents
 - WebFetch execution model is now: one active backend per request, ordered fallback across the remaining providers, and native Claude `WebFetch` as the final escape hatch
+- The next installation/runtime compatibility slice should be framed as **multiple targets**, not dual-target only:
+  - `claude-code`
+  - `copilot-vscode`
+  - `all`
+- Checked Copilot-on-VS-Code hook docs confirm the compatibility boundary that matters for later implementation:
+  - VS Code reads Claude-style hook config locations
+  - matcher values are ignored
+  - tool names and `tool_input` field names may differ from Claude Code
+  - runtime-specific wrappers will likely be required for safe compatibility
 
 ---
 

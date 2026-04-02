@@ -265,7 +265,11 @@ Provide installer utility:
 - create/update hook files
 - merge settings safely
 - detect existing hook duplication
-- support user-scope and project-scope install
+- support target-aware install modes
+  - `claude-code`
+  - `copilot-vscode`
+  - `all`
+- keep shared core logic reusable while allowing runtime-specific wrappers/config placement
 
 ---
 

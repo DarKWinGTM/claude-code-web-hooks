@@ -51,8 +51,11 @@
 - [x] Design a bounded WebFetch extractor-provider slice for Tavily Extract and Exa Contents while keeping WebSearchAPI.ai Scrape as the active backend
 - [x] Decide that future WebFetch extractor support should use a provider-policy model with ordered fallback
 - [x] Implement three interchangeable WebFetch extraction backends from the first rollout (`WebSearchAPI.ai Scrape`, `Tavily Extract`, `Exa Contents`)
-- [ ] Finalize three-backend WebFetch verification and release-sync wording
+- [x] Finalize three-backend WebFetch verification and release-sync wording
 - [x] Run live smoke tests with real provider keys for WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents
+- [x] Design target-aware install / uninstall / verify support for multiple runtime targets (`claude-code`, `copilot-vscode`, `all`)
+- [x] Define Copilot-on-VS-Code compatibility wrappers / config placement without breaking the current Claude Code path
+- [x] Define multiple-target installer semantics that keep the design open to future targets beyond `claude-code` and `copilot-vscode`
 
 ### Release readiness checklist
 - [x] Add `.gitignore`
@@ -72,6 +75,6 @@
 
 | Date | Changes |
 |------|---------|
-| 2026-03-28 | Implemented and verified the narrow WebFetch heuristic refinement for low-text structured portal pages, then completed the three-backend WebFetch extraction rollout in repo state: added interchangeable extraction backends for WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents; added one-active-backend-per-request selection with ordered fallback; updated install/uninstall/settings/verify/docs/phase files; and completed real-key smoke testing for Tavily Extract and Exa Contents plus ordered fallback behavior. |
+| 2026-03-28 | Implemented and verified the narrow WebFetch heuristic refinement for low-text structured portal pages, then completed the three-backend WebFetch extraction rollout in repo state: added interchangeable extraction backends for WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents; added one-active-backend-per-request selection with ordered fallback; updated install/uninstall/settings/verify/docs/phase files; completed real-key smoke testing for Tavily Extract and Exa Contents plus ordered fallback behavior; and staged then implemented target-aware install / uninstall / verify support for the multiple-target model (`claude-code`, `copilot-vscode`, `all`) including Copilot compatibility wrappers. |
 | 2026-03-27 | Audited `design.md` and `phase/` against the current implementation, aligned wording to the active provider set (WebSearchAPI.ai, Tavily, Exa), normalized phase titles to `001`-`005`, and closed stale TODO items that had already been implemented. |
 | 2026-03-20 | Created new standalone project scaffold `claude-code-web-hooks` with initial design, changelog, and TODO to separate web hook logic from external gateway/runtime ownership. |
