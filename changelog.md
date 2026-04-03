@@ -1,9 +1,31 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.5
+> **Current Version:** 0.1.6
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-04
+
+---
+
+## Version 0.1.6 - 2026-04-04
+
+### Added
+- Added `hooks/websearch-mcp-pass-through.cjs` as an allow-only coexistence hook for `mcp__ccs-websearch__WebSearch`
+- Added optional `ccsMcpHooksExample` config in `settings.example.json`
+- Added governed coexistence artifacts:
+  - `phase/phase-010-stage-websearch-mcp-coexistence.md`
+  - `patch/websearch-mcp-coexistence.patch.md`
+
+### Updated
+- Updated the native WebSearch hook so it explicitly allows the CCS MCP tool path instead of trying to substitute it
+- Updated install/uninstall flow to support optional CCS MCP pass-through installation with `--with-ccs-mcp-pass-through`, while keeping the pass-through file itself out of the default install/uninstall ownership path
+- Centralized the CCS MCP tool name in a shared hook constant so the native hook, MCP pass-through hook, and Copilot wrapper do not drift on raw string matching
+- Updated verification coverage to prove pass-through / no-block / no-double-search behavior for `mcp__ccs-websearch__WebSearch`
+- Updated README, design, TODO, and phase summary to distinguish native WebSearch substitution from optional CCS MCP coexistence
+
+### Notes
+- Native `WebSearch` remains the only substitution path owned by this repo
+- `mcp__ccs-websearch__WebSearch` remains owned by CCS and is supported here only as an allow-only coexistence matcher
 
 ---
 

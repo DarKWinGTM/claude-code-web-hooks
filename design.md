@@ -67,6 +67,7 @@ The current implementation goal is:
 ### In scope
 - Claude Code `PreToolUse` hook for `WebSearch`
 - Claude Code `PreToolUse` hook for `WebFetch`
+- Optional Claude Code `PreToolUse` pass-through matcher for `mcp__ccs-websearch__WebSearch`
 - Search augmentation using WebSearchAPI.ai, Tavily Search, and Exa Search
 - Auto-detection for fetch-readable vs CSR-heavy pages before scraper fallback
 - Optional key-pool support for multiple API keys
@@ -99,13 +100,15 @@ Native tool continuation OR custom provider call
 
 #### 1) WebSearch hook
 Role:
-- intercept Claude Code `WebSearch`
+- intercept native Claude Code `WebSearch`
 - when one or more supported provider keys exist, perform custom search substitution through provider policy
 - when no provider key exists, exit cleanly and allow native WebSearch flow to continue
+- if the tool event is `mcp__ccs-websearch__WebSearch`, do not take ownership; allow the CCS MCP tool to continue normally
 
 Contract:
-- `WebSearch = source discovery`
-- return concise search results and sources
+- native `WebSearch` = source-discovery substitution path owned by this project
+- `mcp__ccs-websearch__WebSearch` = optional allow-only coexistence path, not a substitution path owned by this project
+- return concise search results and sources only for the native `WebSearch` substitution path
 - do not force scraping in this layer
 
 #### 2) WebFetch hook

@@ -2,8 +2,8 @@
 
 > **Project:** Claude Code Web Hooks
 > **Scope:** Multi-provider WebSearch + WebFetch rollout with Claude Code, Copilot on VS Code, and Copilot CLI compatibility
-> **Status:** Completed
-> **Last Updated:** 2026-04-03
+> **Status:** In Progress
+> **Last Updated:** 2026-04-04
 
 ---
 
@@ -20,6 +20,7 @@ The shipped goal now includes:
   - `copilot-vscode`
   - `copilot-cli`
   - `all`
+- explicit coexistence boundary for native `WebSearch` plus optional CCS MCP WebSearch pass-through
 
 ---
 
@@ -36,6 +37,7 @@ The shipped goal now includes:
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | `design.md` sections: Detection Model for WebFetch, Multi-provider direction | none | Define a bounded scraping/content-extraction design slice for Tavily Extract and Exa Contents while keeping WebSearchAPI.ai Scrape as the active backend | Future WebFetch extractor expansion is staged without changing the current runtime path |
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | `design.md` section: WebFetch extraction backends | none | Implement selectable WebFetch extraction backends across WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents with one active backend per request and ordered fallback | Three interchangeable extraction backends are available from the first runtime implementation |
 | P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | `README.md` section: How to install; `design.md` section: Installation Model | none | Define target-aware install / uninstall / verify support across multiple runtime targets (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`) and stage Copilot compatibility wrappers/config placement | Future installation/runtime compatibility can expand beyond Claude Code without freezing the model at only two targets |
+| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | `design.md` sections: WebSearch hook, Fallback Philosophy, Installation Model | `patch/websearch-mcp-coexistence.patch.md` | Add explicit non-blocking coexistence support for `mcp__ccs-websearch__WebSearch` while preserving exact native `WebSearch` substitution ownership | Native WebSearch and CCS MCP WebSearch can coexist without blocking or double-search |
 
 ---
 
@@ -76,6 +78,7 @@ Target state
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | Approved | None | Approved As-Is | design slice staged and first bounded capability comparison recorded |
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | Approved | None | Approved As-Is | completed |
 | P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved | None | Approved As-Is | completed |
+| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | implementation and release sync in progress |
 
 ---
 
@@ -92,6 +95,7 @@ Target state
 - Real-key smoke is complete and confirms direct extraction success for Tavily Extract and Exa Contents plus real ordered fallback behavior in the installed hook.
 - P9 is complete and adds target-aware install / uninstall / verify support for multiple runtime targets rather than freezing the model at only two targets.
 - Current P9 expansion now covers Copilot on VS Code and Copilot CLI through the same wrapper pair, with VS Code user-hook config and repo-scoped Copilot CLI hook config kept explicit.
+- P10 is in progress and adds an explicit coexistence boundary for the CCS MCP WebSearch tool so the project can recognize `mcp__ccs-websearch__WebSearch` without taking ownership of that MCP path.
 - Native fallback policy must remain preserved through every phase.
 
 ---
@@ -114,6 +118,10 @@ End-to-end success should show:
 - Copilot verification must confirm both runtime shapes:
   - VS Code / Claude-style payloads with `tool_name` and `tool_input`
   - Copilot CLI payloads with `toolName` and stringified `toolArgs`
+- CCS MCP coexistence verification must confirm:
+  - `mcp__ccs-websearch__WebSearch` returns `allow`
+  - the MCP path does not substitute results
+  - the MCP path does not trigger duplicate provider execution
 - docs and verification scripts now reflect the shipped behavior
 
 ---

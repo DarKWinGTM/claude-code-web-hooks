@@ -23,6 +23,22 @@
       }
     ]
   },
+  "ccsMcpHooksExample": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "matcher": "mcp__ccs-websearch__WebSearch",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/websearch-mcp-pass-through.cjs\"",
+              "timeout": 30
+            }
+          ]
+        }
+      ]
+    }
+  },
   "copilotHooksExample": {
     "version": 1,
     "hooks": {

@@ -50,6 +50,7 @@
 const { classifyProviderFailure, shouldAllowNativeFallback } = require('./shared/failure-policy.cjs');
 const { executeSearchProviderPolicy } = require('./shared/search-provider-policy.cjs');
 const { formatAggregateSearchProviderResult } = require('./shared/search-provider-contract.cjs');
+const { CCS_MCP_WEBSEARCH_TOOL_NAME } = require('./shared/tool-names.cjs');
 
 function debugLog(message) {
   if (process.env.CLAUDE_WEB_HOOKS_DEBUG) {
@@ -84,13 +85,17 @@ function outputSuccess(query, policyResult) {
   process.exit(2);
 }
 
-function outputAllowContinuation(message) {
+function outputAllowContinuation(message, additionalContext) {
+  const hookSpecificOutput = {
+    hookEventName: 'PreToolUse',
+    permissionDecision: 'allow',
+  };
+  if (typeof additionalContext === 'string' && additionalContext.trim()) {
+    hookSpecificOutput.additionalContext = additionalContext;
+  }
   console.log(JSON.stringify({
     systemMessage: message,
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      permissionDecision: 'allow',
-    },
+    hookSpecificOutput,
   }));
   process.exit(0);
 }
@@ -138,7 +143,18 @@ process.stdin.on('error', () => {
 async function processHook() {
   try {
     const data = JSON.parse(input);
-    if (data.tool_name !== 'WebSearch') {
+    const toolName = typeof data.tool_name === 'string'
+      ? data.tool_name.trim()
+      : (typeof data.toolName === 'string' ? data.toolName.trim() : '');
+
+    if (toolName === CCS_MCP_WEBSEARCH_TOOL_NAME) {
+      outputAllowContinuation(
+        '[WebSearch hook] class=search-substitution -> allow-mcp-ccs-websearch',
+        'CCS MCP WebSearch tool detected. claude-code-web-hooks preserves CCS ownership for this MCP path and does not substitute results here.'
+      );
+    }
+
+    if (toolName !== 'WebSearch') {
       process.exit(0);
     }
 

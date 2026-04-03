@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const { spawnSync } = require('child_process');
 const path = require('path');
+const { CCS_MCP_WEBSEARCH_TOOL_NAME } = require('./shared/tool-names.cjs');
 
 function emitAllow(runtime) {
   if (runtime === 'copilot-cli') {
@@ -93,6 +94,9 @@ function processHook() {
     const data = JSON.parse(input);
     const runtime = detectRuntime(data);
     const { toolName, toolInput } = extractToolContext(data, runtime);
+    if (toolName === CCS_MCP_WEBSEARCH_TOOL_NAME) {
+      emitAllow(runtime);
+    }
     const supportedToolNames = parseCsvEnv(['COPILOT_WEBSEARCH_TOOL_NAMES', 'COPILOT_CLI_WEBSEARCH_TOOL_NAMES']);
     if (!toolName || supportedToolNames.length === 0 || !supportedToolNames.includes(toolName)) {
       emitAllow(runtime);

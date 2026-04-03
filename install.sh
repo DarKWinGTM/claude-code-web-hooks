@@ -2,11 +2,16 @@
 set -euo pipefail
 
 TARGET="claude-code"
+INSTALL_CCS_MCP_PASS_THROUGH=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
       TARGET="${2:-}"
       shift 2
+      ;;
+    --with-ccs-mcp-pass-through)
+      INSTALL_CCS_MCP_PASS_THROUGH=1
+      shift
       ;;
     *)
       echo "Unknown argument: $1" >&2
@@ -77,6 +82,8 @@ WEBSEARCHAPI_EXTRACTOR_SRC="${PROJECT_DIR}/hooks/shared/extract-providers/websea
 TAVILY_EXTRACTOR_SRC="${PROJECT_DIR}/hooks/shared/extract-providers/tavily.cjs"
 EXA_EXTRACTOR_SRC="${PROJECT_DIR}/hooks/shared/extract-providers/exa.cjs"
 WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-custom.cjs"
+WEBSEARCH_MCP_PASS_THROUGH_SRC="${PROJECT_DIR}/hooks/websearch-mcp-pass-through.cjs"
+WEBSEARCH_MCP_PASS_THROUGH_DST="${TARGET_HOOK_DIR}/websearch-mcp-pass-through.cjs"
 WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-scraper.cjs"
 COPILOT_WEBSEARCH_DST="${TARGET_HOOK_DIR}/copilot-websearch.cjs"
 COPILOT_WEBFETCH_DST="${TARGET_HOOK_DIR}/copilot-webfetch.cjs"
@@ -98,6 +105,9 @@ mkdir -p "${BACKUP_DIR}"
 if [ "$INSTALL_CLAUDE" -eq 1 ]; then
   mkdir -p "${TARGET_HOOK_DIR}" "${TARGET_SHARED_DIR}" "${TARGET_SEARCH_PROVIDER_DIR}" "${TARGET_EXTRACT_PROVIDER_DIR}"
   cp "${WEBSEARCH_SRC}" "${WEBSEARCH_DST}"
+  if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
+    cp "${WEBSEARCH_MCP_PASS_THROUGH_SRC}" "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+  fi
   cp "${WEBFETCH_SRC}" "${WEBFETCH_DST}"
   cp "${FAILURE_POLICY_SRC}" "${FAILURE_POLICY_DST}"
   cp "${PROVIDER_CONFIG_SRC}" "${PROVIDER_CONFIG_DST}"
@@ -112,6 +122,9 @@ if [ "$INSTALL_CLAUDE" -eq 1 ]; then
   cp "${TAVILY_EXTRACTOR_SRC}" "${TAVILY_EXTRACTOR_DST}"
   cp "${EXA_EXTRACTOR_SRC}" "${EXA_EXTRACTOR_DST}"
   chmod 755 "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${PROVIDER_CONFIG_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${EXTRACT_PROVIDER_CONTRACT_DST}" "${EXTRACT_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}" "${WEBSEARCHAPI_EXTRACTOR_DST}" "${TAVILY_EXTRACTOR_DST}" "${EXA_EXTRACTOR_DST}"
+  if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
+    chmod 755 "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+  fi
 
   if [ -f "${TARGET_SETTINGS}" ]; then
     cp "${TARGET_SETTINGS}" "${BACKUP_DIR}/settings.${TIMESTAMP}.json"
@@ -120,11 +133,13 @@ if [ "$INSTALL_CLAUDE" -eq 1 ]; then
     cp "${TARGET_SETTINGS}" "${BACKUP_DIR}/settings.${TIMESTAMP}.json"
   fi
 
-  node - "${TARGET_SETTINGS}" "${WEBSEARCH_DST}" "${WEBFETCH_DST}" <<'NODE'
+  node - "${TARGET_SETTINGS}" "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${WEBSEARCH_MCP_PASS_THROUGH_DST}" "${INSTALL_CCS_MCP_PASS_THROUGH}" <<'NODE'
 const fs = require('fs');
 const settingsPath = process.argv[2];
 const websearchHook = process.argv[3];
 const webfetchHook = process.argv[4];
+const websearchMcpPassThroughHook = process.argv[5];
+const installCcsMcpPassThrough = process.argv[6] === '1';
 
 const readJson = (file) => {
   try {
@@ -138,7 +153,7 @@ const settings = readJson(settingsPath);
 if (!settings.hooks || typeof settings.hooks !== 'object') settings.hooks = {};
 if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
 
-const ensureHook = (matcher, command) => {
+const ensureHook = (matcher, command, timeout = 120) => {
   const existing = settings.hooks.PreToolUse.find((entry) => entry && entry.matcher === matcher);
   const hookObject = {
     matcher,
@@ -146,7 +161,7 @@ const ensureHook = (matcher, command) => {
       {
         type: 'command',
         command: `node \"${command}\"`,
-        timeout: 120,
+        timeout,
       },
     ],
   };
@@ -159,15 +174,41 @@ const ensureHook = (matcher, command) => {
   existing.hooks = hookObject.hooks;
 };
 
+const ensureHookIfAbsent = (matcher, command, timeout = 30) => {
+  const existing = settings.hooks.PreToolUse.find((entry) => entry && entry.matcher === matcher);
+  if (existing) {
+    return false;
+  }
+  ensureHook(matcher, command, timeout);
+  return true;
+};
+
 ensureHook('WebSearch', websearchHook);
 ensureHook('WebFetch', webfetchHook);
+let installedCcsMcpPassThrough = false;
+let preservedExistingCcsMcpMatcher = false;
+if (installCcsMcpPassThrough) {
+  installedCcsMcpPassThrough = ensureHookIfAbsent('mcp__ccs-websearch__WebSearch', websearchMcpPassThroughHook, 30);
+  preservedExistingCcsMcpMatcher = !installedCcsMcpPassThrough;
+}
 
 fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
+if (installCcsMcpPassThrough) {
+  if (installedCcsMcpPassThrough) {
+    console.error('Installed optional CCS MCP pass-through matcher: mcp__ccs-websearch__WebSearch');
+  } else if (preservedExistingCcsMcpMatcher) {
+    console.error('Preserved existing matcher for: mcp__ccs-websearch__WebSearch');
+  }
+}
 NODE
 
   printf 'Installed Claude Code hooks:\n'
   printf '  - %s\n' "${WEBSEARCH_DST}"
   printf '  - %s\n' "${WEBFETCH_DST}"
+  if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
+    printf 'Optional CCS MCP pass-through hook available at:\n'
+    printf '  - %s\n' "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+  fi
   printf 'Installed Claude Code shared helpers:\n'
   printf '  - %s\n' "${FAILURE_POLICY_DST}"
   printf '  - %s\n' "${PROVIDER_CONFIG_DST}"
@@ -185,6 +226,11 @@ NODE
   printf '  - %s\n' "${EXA_EXTRACTOR_DST}"
   printf 'Updated Claude settings:\n'
   printf '  - %s\n' "${TARGET_SETTINGS}"
+  if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
+    printf 'CCS MCP coexistence matcher handling:\n'
+    printf '  - matcher: mcp__ccs-websearch__WebSearch\n'
+    printf '  - mode: allow-only pass-through\n'
+  fi
   printf 'Backup created:\n'
   printf '  - %s\n' "${BACKUP_DIR}/settings.${TIMESTAMP}.json"
 fi

@@ -319,7 +319,8 @@ What `install.sh` currently does for `claude-code`:
 - backs up `~/.claude/settings.json` before editing
 - merges the required `PreToolUse -> WebSearch`
 - merges the required `PreToolUse -> WebFetch`
-- preserves unrelated Claude Code settings
+- optionally adds a non-blocking pass-through matcher for `mcp__ccs-websearch__WebSearch` only when `--with-ccs-mcp-pass-through` is requested
+- preserves unrelated Claude Code settings and preserves existing user-owned MCC/CCS matcher entries
 
 After install:
 - open `/hooks` in Claude Code to reload configuration
@@ -342,6 +343,7 @@ Current direction:
 Examples:
 ```bash
 ./install.sh --target claude-code
+./install.sh --target claude-code --with-ccs-mcp-pass-through
 ./install.sh --target copilot-vscode
 ./install.sh --target copilot-cli
 ./install.sh --target all
@@ -364,8 +366,9 @@ Examples:
 2. Copy the shared helpers into `~/.claude/hooks/shared/`
 3. Copy the search provider adapters into `~/.claude/hooks/shared/search-providers/`
 4. Copy the extraction provider adapters into `~/.claude/hooks/shared/extract-providers/`
-5. Merge the `hooks` block from `settings.example.json` into `~/.claude/settings.json`
+5. Merge the native `WebSearch` and `WebFetch` `hooks` block from `settings.example.json` into `~/.claude/settings.json`
 6. Add the env variables you want to use (`WEBSEARCHAPI_API_KEY`, `TAVILY_API_KEY`, and/or `EXA_API_KEY`)
+7. Only add the optional `ccsMcpHooksExample` block if you explicitly want a non-blocking coexistence matcher for `mcp__ccs-websearch__WebSearch`
 
 #### Copilot on VS Code
 1. Copy the wrapper hooks:
@@ -434,7 +437,17 @@ These wrappers exist because Copilot runtimes currently differ from Claude Code 
 - Copilot CLI uses `toolName` and stringified `toolArgs` in `preToolUse`, and expects CLI-style permission output
 - both Copilot targets are normalized through the same wrapper pair before reaching the shared core
 
-### 2) Configure API keys
+### 2) Optional CCS MCP coexistence
+
+If you also use the CCS MCP server and want this repo to explicitly recognize the CCS MCP search tool without blocking it, add the optional `ccsMcpHooksExample` block from `settings.example.json`.
+
+Coexistence contract:
+- native `WebSearch` is still the only substitution path owned by this repo
+- `mcp__ccs-websearch__WebSearch` remains owned by CCS
+- the optional MCP matcher is allow-only pass-through
+- it must not substitute results or run a second search
+
+### 3) Configure API keys
 The project currently uses **separate provider keys**:
 - `WEBSEARCHAPI_API_KEY` for WebSearchAPI.ai Search + WebSearchAPI.ai Scrape
 - `TAVILY_API_KEY` for Tavily Search + Tavily Extract
@@ -683,16 +696,25 @@ See also:
 Run:
 
 ```bash
-./verify.sh
+./verify.sh --target all
+```
+
+Optional coexistence install test:
+
+```bash
+./install.sh --target claude-code --with-ccs-mcp-pass-through
 ```
 
 What it checks:
 - hook syntax
 - install/uninstall script syntax
 - example settings shape
+- native Claude hook config shape
+- optional CCS MCP pass-through hook example shape
 - fixture-based WebFetch classification
 - shared failure policy behavior
 - search provider policy availability
+- CCS MCP pass-through allow-only behavior
 - WebFetch extraction provider policy selection/fallback behavior
 - Copilot wrapper basic compatibility path
 - parallel-mode aggregation sanity

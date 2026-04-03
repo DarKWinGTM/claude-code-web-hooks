@@ -2,11 +2,16 @@
 set -euo pipefail
 
 TARGET="claude-code"
+REMOVE_CCS_MCP_PASS_THROUGH=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
       TARGET="${2:-}"
       shift 2
+      ;;
+    --with-ccs-mcp-pass-through)
+      REMOVE_CCS_MCP_PASS_THROUGH=1
+      shift
       ;;
     *)
       echo "Unknown argument: $1" >&2
@@ -57,6 +62,7 @@ case "$TARGET" in
 esac
 
 WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-custom.cjs"
+WEBSEARCH_MCP_PASS_THROUGH_DST="${TARGET_HOOK_DIR}/websearch-mcp-pass-through.cjs"
 WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-scraper.cjs"
 FAILURE_POLICY_DST="${TARGET_SHARED_DIR}/failure-policy.cjs"
 PROVIDER_CONFIG_DST="${TARGET_SHARED_DIR}/provider-config.cjs"
@@ -78,9 +84,10 @@ mkdir -p "${BACKUP_DIR}"
 if [ "$REMOVE_CLAUDE" -eq 1 ] && [ -f "${TARGET_SETTINGS}" ]; then
   cp "${TARGET_SETTINGS}" "${BACKUP_DIR}/settings.uninstall.${TIMESTAMP}.json"
 
-  node - "${TARGET_SETTINGS}" <<'NODE'
+  node - "${TARGET_SETTINGS}" "${REMOVE_CCS_MCP_PASS_THROUGH}" <<'NODE'
 const fs = require('fs');
 const settingsPath = process.argv[2];
+const removeCcsMcpPassThrough = process.argv[3] === '1';
 const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 
 if (settings.hooks && Array.isArray(settings.hooks.PreToolUse)) {
@@ -92,7 +99,8 @@ if (settings.hooks && Array.isArray(settings.hooks.PreToolUse)) {
 
     const ownsWebSearch = entry.matcher === 'WebSearch' && commands.some((cmd) => cmd.includes('websearch-custom.cjs'));
     const ownsWebFetch = entry.matcher === 'WebFetch' && commands.some((cmd) => cmd.includes('webfetch-scraper.cjs'));
-    return !(ownsWebSearch || ownsWebFetch);
+    const ownsWebSearchMcpPassThrough = removeCcsMcpPassThrough && entry.matcher === 'mcp__ccs-websearch__WebSearch' && commands.some((cmd) => cmd.includes('websearch-mcp-pass-through.cjs'));
+    return !(ownsWebSearch || ownsWebFetch || ownsWebSearchMcpPassThrough);
   });
 }
 
@@ -102,10 +110,17 @@ fi
 
 if [ "$REMOVE_CLAUDE" -eq 1 ]; then
   rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${PROVIDER_CONFIG_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${EXTRACT_PROVIDER_CONTRACT_DST}" "${EXTRACT_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}" "${WEBSEARCHAPI_EXTRACTOR_DST}" "${TAVILY_EXTRACTOR_DST}" "${EXA_EXTRACTOR_DST}"
+  if [ "$REMOVE_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
+    rm -f "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+  fi
 
   printf 'Removed Claude Code hooks if present:\n'
   printf '  - %s\n' "${WEBSEARCH_DST}"
   printf '  - %s\n' "${WEBFETCH_DST}"
+  if [ "$REMOVE_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
+    printf 'Removed optional CCS MCP pass-through hook if present:\n'
+    printf '  - %s\n' "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+  fi
   printf 'Removed Claude Code shared helpers if present:\n'
   printf '  - %s\n' "${FAILURE_POLICY_DST}"
   printf '  - %s\n' "${PROVIDER_CONFIG_DST}"

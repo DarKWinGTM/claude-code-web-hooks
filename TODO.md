@@ -57,6 +57,8 @@
 - [x] Define Copilot-on-VS-Code compatibility wrappers / config placement without breaking the current Claude Code path
 - [x] Extend the Copilot compatibility layer to also support Copilot CLI payload/input-output rules
 - [x] Define multiple-target installer semantics that keep the design open to future targets beyond `claude-code` and `copilot-vscode`
+- [x] Add explicit non-blocking coexistence support for CCS MCP WebSearch (`mcp__ccs-websearch__WebSearch`) without taking ownership of the MCP tool path
+- [x] Verify native WebSearch substitution and CCS MCP pass-through together without double-search behavior
 
 ### Release readiness checklist
 - [x] Add `.gitignore`

@@ -59,6 +59,7 @@ node --check "${PROJECT_DIR}/hooks/shared/extract-providers/websearchapi.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/extract-providers/tavily.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/extract-providers/exa.cjs"
 node --check "${PROJECT_DIR}/hooks/websearch-custom.cjs"
+node --check "${PROJECT_DIR}/hooks/websearch-mcp-pass-through.cjs"
 node --check "${PROJECT_DIR}/hooks/webfetch-scraper.cjs"
 if [ "$VERIFY_COPILOT_VSCODE" -eq 1 ] || [ "$VERIFY_COPILOT_CLI" -eq 1 ]; then
   node --check "${PROJECT_DIR}/hooks/copilot-websearch.cjs"
@@ -77,12 +78,18 @@ const verifyCopilotCli = process.env.VERIFY_COPILOT_CLI_ENV === '1';
 const settings = JSON.parse(fs.readFileSync(path.join(projectDir, 'settings.example.json'), 'utf8'));
 const summary = {
   claudeHookCount: Array.isArray(settings?.hooks?.PreToolUse) ? settings.hooks.PreToolUse.length : 0,
+  ccsMcpHookCount: 0,
   copilotUserHookCount: 0,
   copilotCliHookCount: 0,
 };
 if (!Array.isArray(settings?.hooks?.PreToolUse) || settings.hooks.PreToolUse.length < 2) {
   throw new Error('settings.example.json missing Claude PreToolUse hooks');
 }
+const ccsMcpPreToolUse = settings?.ccsMcpHooksExample?.hooks?.PreToolUse;
+if (!Array.isArray(ccsMcpPreToolUse) || ccsMcpPreToolUse.length < 1) {
+  throw new Error('settings.example.json missing CCS MCP pass-through hook example');
+}
+summary.ccsMcpHookCount = ccsMcpPreToolUse.length;
 if (verifyCopilotVsCode) {
   const preToolUse = settings?.copilotHooksExample?.hooks?.preToolUse;
   if (settings?.copilotHooksExample?.version !== 1 || !Array.isArray(preToolUse) || preToolUse.length < 2) {
@@ -186,6 +193,34 @@ websearchapi.search = async ({ query }) => ({ ok: false, error: 'quota exceeded'
   if (out.successes.length !== 1) throw new Error('parallel success aggregation is incorrect');
   if (out.failures.length !== 1) throw new Error('parallel failure aggregation is incorrect');
 })();
+NODE
+
+printf '\n== CCS MCP WebSearch pass-through check ==\n'
+PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
+const path = require('path');
+const { spawnSync } = require('child_process');
+const projectDir = process.env.PROJECT_DIR_ENV;
+const scriptPath = path.join(projectDir, 'hooks/websearch-mcp-pass-through.cjs');
+const payload = JSON.stringify({
+  tool_name: 'mcp__ccs-websearch__WebSearch',
+  tool_input: {
+    query: 'latest ccs docs',
+  },
+});
+const child = spawnSync('node', [scriptPath], {
+  input: payload,
+  encoding: 'utf8',
+  env: process.env,
+});
+if (typeof child.status !== 'number') throw new Error('CCS MCP pass-through hook did not exit cleanly');
+const parsed = JSON.parse(String(child.stdout || '').trim() || '{}');
+if (parsed?.hookSpecificOutput?.permissionDecision !== 'allow') {
+  throw new Error('CCS MCP pass-through hook did not allow MCP tool execution');
+}
+if (parsed?.hookSpecificOutput?.permissionDecisionReason) {
+  throw new Error('CCS MCP pass-through hook should not substitute MCP results');
+}
+console.log(JSON.stringify({ status: child.status, permissionDecision: parsed.hookSpecificOutput.permissionDecision }, null, 2));
 NODE
 
 printf '\n== WebFetch extraction provider policy check ==\n'
