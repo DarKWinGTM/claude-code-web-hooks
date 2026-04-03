@@ -2,7 +2,7 @@
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P9
-> **Status:** In Progress
+> **Status:** Completed
 > **Design References:** `README.md` section: How to install; `design.md` section: Installation Model
 > **Patch References:** none
 

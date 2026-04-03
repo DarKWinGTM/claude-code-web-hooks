@@ -1,23 +1,25 @@
-# Phase Summary - Multi-Provider Search Integration
+# Phase Summary - Provider and Runtime Compatibility Rollout
 
 > **Project:** Claude Code Web Hooks
-> **Scope:** Multi-provider search architecture with Tavily and Exa Search integration
-> **Status:** In Progress
-> **Last Updated:** 2026-03-28
+> **Scope:** Multi-provider WebSearch + WebFetch rollout with Claude Code, Copilot on VS Code, and Copilot CLI compatibility
+> **Status:** Completed
+> **Last Updated:** 2026-04-03
 
 ---
 
 ## Overall goal
 
-Add **Tavily Search** and **Exa Search** into `Claude Code Web Hooks` in a way that keeps the current Claude Code hook model intact while moving the search path from a single-provider baseline to configurable multi-provider logic.
+Deliver the current provider-and-runtime rollout for `Claude Code Web Hooks` without changing the shared hook core unnecessarily.
 
-The goal is not to replace the current provider immediately.
-The goal is to introduce a search-provider architecture that supports:
-- current WebSearchAPI.ai search path
-- new Tavily Search path
-- new Exa Search path
-- configurable provider policy
-- preserved native Claude Code fallback
+The shipped goal now includes:
+- configurable multi-provider WebSearch across WebSearchAPI.ai, Tavily Search, and Exa Search
+- three interchangeable WebFetch extraction backends across WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents
+- preserved native fallback for both WebSearch and WebFetch
+- explicit runtime compatibility across:
+  - `claude-code`
+  - `copilot-vscode`
+  - `copilot-cli`
+  - `all`
 
 ---
 
@@ -69,11 +71,11 @@ Target state
 | P2 | `phase-002-add-tavily-search-adapter.md` | Approved | None | Approved As-Is | completed |
 | P3 | `phase-003-add-search-provider-policy.md` | Approved | None | Approved As-Is | completed |
 | P4 | `phase-004-wire-websearch-hook.md` | Approved | None | Approved As-Is | completed |
-| P5 | `phase-005-verify-docs-and-release-sync.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | final wording sync and release-note follow-up remain open |
+| P5 | `phase-005-verify-docs-and-release-sync.md` | Approved | None | Approved As-Is | completed |
 | P6 | `phase-006-refine-webfetch-template-heavy-detection.md` | Approved | None | Approved As-Is | implemented and verified against fixture/runtime checks |
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | Approved | None | Approved As-Is | design slice staged and first bounded capability comparison recorded |
-| P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | implementation in progress; repo verification passed, real-key smoke completed, and final release-sync still pending |
-| P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | implementation in progress; target-aware installer / uninstaller / verifier support and Copilot wrappers added for VS Code + CLI, final doc-sync and verification still pending |
+| P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | Approved | None | Approved As-Is | completed |
+| P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved | None | Approved As-Is | completed |
 
 ---
 
@@ -83,12 +85,12 @@ Target state
 - P2 is complete and Tavily Search now exists as a provider adapter.
 - P3 is complete and provider policy now supports `fallback` and `parallel`, including aggregate parallel results.
 - P4 is complete and the WebSearch hook now routes through provider policy across WebSearchAPI.ai, Tavily, and Exa.
-- P5 remains in progress until docs/code sync and release-note follow-up are finalized.
+- P5 is complete and docs, verification, and release-facing wording are now synchronized with the shipped provider/runtime behavior.
 - P6 is complete and the narrow WebFetch detection refinement now classifies low-text structured portal pages as `template-heavy` without broadening the overall classification model.
 - P7 is complete and includes the first bounded capability comparison for Tavily Extract and Exa Contents while keeping WebSearchAPI.ai Scrape as the active backend.
-- P8 is in progress and implements three supported WebFetch extraction backends with one active backend per request plus ordered fallback.
+- P8 is complete and implements three supported WebFetch extraction backends with one active backend per request plus ordered fallback.
 - Real-key smoke is complete and confirms direct extraction success for Tavily Extract and Exa Contents plus real ordered fallback behavior in the installed hook.
-- P9 is now in progress and adds target-aware install / uninstall / verify support for multiple runtime targets rather than freezing the model at only two targets.
+- P9 is complete and adds target-aware install / uninstall / verify support for multiple runtime targets rather than freezing the model at only two targets.
 - Current P9 expansion now covers Copilot on VS Code and Copilot CLI through the same wrapper pair, with VS Code user-hook config and repo-scoped Copilot CLI hook config kept explicit.
 - Native fallback policy must remain preserved through every phase.
 
@@ -112,7 +114,7 @@ End-to-end success should show:
 - Copilot verification must confirm both runtime shapes:
   - VS Code / Claude-style payloads with `tool_name` and `tool_input`
   - Copilot CLI payloads with `toolName` and stringified `toolArgs`
-- docs and verification scripts must still be finalized to reflect the shipped behavior
+- docs and verification scripts now reflect the shipped behavior
 
 ---
 

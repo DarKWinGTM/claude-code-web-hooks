@@ -2,7 +2,7 @@
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P8
-> **Status:** In Progress
+> **Status:** Completed
 > **Design References:** `design.md` section: Extractor-provider candidates for WebFetch
 > **Patch References:** none
 
@@ -32,7 +32,7 @@ The project now has a staged design boundary and an initial capability compariso
 - [x] Add verification coverage for selection / fallback behavior
 - [x] Keep the current native fallback / bounded rollout behavior explicit
 - [x] Run implementation verification and capture the current smoke-test state
-- [ ] Finalize implementation/release-sync wording after the current rollout state is reflected across docs
+- [x] Finalize implementation/release-sync wording after the current rollout state is reflected across docs
 
 ## Out of scope
 - parallel extraction aggregation across multiple providers

@@ -2,7 +2,7 @@
 
 > **Summary File:** `phase/SUMMARY.md`
 > **Phase ID:** P5
-> **Status:** In Progress
+> **Status:** Completed
 > **Design References:** `design.md`, `README.md`, `verify.sh`, `TODO.md`, `changelog.md`
 > **Patch References:** none
 
@@ -31,7 +31,7 @@ Multi-provider behavior is not complete until users can install it, understand i
 - [x] Update `settings.example.json` for search provider policy config
 - [x] Update `verify.sh` to include provider-policy checks
 - [x] Update `TODO.md` and `changelog.md`
-- [ ] Prepare next release notes once implementation is stable
+- [x] Prepare next release notes once implementation is stable
 - [x] Document aggregate parallel-result behavior and partial-failure reporting
 
 ## Out of scope

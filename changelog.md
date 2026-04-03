@@ -1,13 +1,38 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.3
+> **Current Version:** 0.1.5
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
-> **Last Updated:** 2026-03-28
+> **Last Updated:** 2026-04-03
 
 ---
 
-## Version 0.1.3 - 2026-03-28
+## Version 0.1.5 - 2026-04-03
+
+### Added
+- Added explicit `copilot-cli` target handling across `install.sh`, `uninstall.sh`, and `verify.sh`
+- Added official-style Copilot CLI repo hook config under `.github/hooks/claude-code-web-hooks.json` using `version: 1` and `preToolUse`
+- Added Copilot CLI tool-name env examples:
+  - `COPILOT_CLI_WEBSEARCH_TOOL_NAMES`
+  - `COPILOT_CLI_WEBFETCH_TOOL_NAMES`
+
+### Updated
+- Updated Copilot compatibility wrappers so the same wrapper pair now supports:
+  - VS Code / Claude-style payloads with `tool_name` and `tool_input`
+  - Copilot CLI payloads with `toolName` and stringified `toolArgs`
+- Updated install flow so Copilot wrappers are installed into `~/.claude/hooks/` and then reused by both Copilot on VS Code and Copilot CLI
+- Updated Copilot on VS Code user-hook config to point at the installed wrapper paths under `~/.claude/hooks/`
+- Updated README, design, TODO, and phase docs to reflect current Copilot CLI compatibility scope and official hook-shape details
+- Verified `./verify.sh` passes for:
+  - `--target copilot-vscode`
+  - `--target copilot-cli`
+  - `--target all`
+
+### Notes
+- Copilot CLI compatibility keeps the same shared provider core; only the wrapper/config boundary changes per runtime
+- Current repo hook config stays repo-scoped for CLI because official docs say Copilot CLI loads hooks from the current working directory
+
+---
 
 ### Added
 - Added a narrow low-text structured portal rule to WebFetch detection so repeated JSON-LD / metadata pages with no real body content classify as `template-heavy`
