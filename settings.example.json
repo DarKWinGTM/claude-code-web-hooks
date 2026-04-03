@@ -24,17 +24,20 @@
     ]
   },
   "copilotHooksExample": {
+    "version": 1,
     "hooks": {
-      "PreToolUse": [
+      "preToolUse": [
         {
           "type": "command",
-          "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/copilot-websearch.cjs\"",
-          "timeout": 30
+          "bash": "node \"$HOME/.claude/hooks/copilot-websearch.cjs\"",
+          "powershell": "node \"$HOME/.claude/hooks/copilot-websearch.cjs\"",
+          "timeoutSec": 30
         },
         {
           "type": "command",
-          "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/copilot-webfetch.cjs\"",
-          "timeout": 30
+          "bash": "node \"$HOME/.claude/hooks/copilot-webfetch.cjs\"",
+          "powershell": "node \"$HOME/.claude/hooks/copilot-webfetch.cjs\"",
+          "timeoutSec": 30
         }
       ]
     }
@@ -70,7 +73,9 @@
     "WEBFETCH_PROBE_MAX_HTML_BYTES": "262144",
     "WEBFETCH_SCRAPER_TIMEOUT": "25",
     "CLAUDE_WEB_HOOKS_DEBUG": "0",
-    "COPILOT_WEBSEARCH_TOOL_NAMES": "webSearch,searchWeb",
-    "COPILOT_WEBFETCH_TOOL_NAMES": "fetchWebPage,readWebPage"
+    "COPILOT_WEBSEARCH_TOOL_NAMES": "REPLACE_WITH_COPILOT_VSCODE_WEBSEARCH_TOOL_NAMES",
+    "COPILOT_WEBFETCH_TOOL_NAMES": "REPLACE_WITH_COPILOT_VSCODE_WEBFETCH_TOOL_NAMES",
+    "COPILOT_CLI_WEBSEARCH_TOOL_NAMES": "REPLACE_WITH_COPILOT_CLI_WEBSEARCH_TOOL_NAMES",
+    "COPILOT_CLI_WEBFETCH_TOOL_NAMES": "REPLACE_WITH_COPILOT_CLI_WEBFETCH_TOOL_NAMES"
   }
 }

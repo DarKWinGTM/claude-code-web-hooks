@@ -23,14 +23,16 @@
 - Added target-aware installer / uninstaller / verifier support for multiple runtime targets:
   - `claude-code`
   - `copilot-vscode`
+  - `copilot-cli`
   - `all`
-- Added Copilot-on-VS-Code compatibility wrappers and target-aware example config paths
+- Added Copilot compatibility wrappers that now support both VS Code Copilot hook payloads and Copilot CLI hook payloads
+- Added target-aware Copilot config paths for both user-level VS Code hooks and repo-scoped Copilot CLI hooks
 - Verified fixture coverage now confirms:
   - `article-readable.html` → `fetch-readable`
   - `template-heavy.html` → `template-heavy`
   - `browser-shell.html` → `browser-render-required`
 - Ran real API smoke tests with available keys and confirmed direct extraction success for Tavily Extract and Exa Contents, plus real ordered fallback behavior in the installed hook
-- Verified target-aware `verify.sh --target all` passes, including the Copilot wrapper compatibility probe
+- Verified target-aware `verify.sh` coverage now includes Claude Code, Copilot on VS Code, Copilot CLI, and combined `all` target flows
 
 ### Notes
 - The refinement remains intentionally narrow: improve low-text structured portal detection without broadening `browser-render-required` or lowering global thresholds

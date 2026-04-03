@@ -33,7 +33,7 @@ The goal is to introduce a search-provider architecture that supports:
 | P6 | `phase-006-refine-webfetch-template-heavy-detection.md` | `design.md` section: Detection Model for WebFetch | none | Narrow the WebFetch heuristic so low-text structured portal pages with repeated metadata blocks classify as `template-heavy` instead of `fetch-readable` | Runtime detection matches intended fixture behavior without broad global threshold relaxation |
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | `design.md` sections: Detection Model for WebFetch, Multi-provider direction | none | Define a bounded scraping/content-extraction design slice for Tavily Extract and Exa Contents while keeping WebSearchAPI.ai Scrape as the active backend | Future WebFetch extractor expansion is staged without changing the current runtime path |
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | `design.md` section: WebFetch extraction backends | none | Implement selectable WebFetch extraction backends across WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents with one active backend per request and ordered fallback | Three interchangeable extraction backends are available from the first runtime implementation |
-| P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | `README.md` section: How to install; `design.md` section: Installation Model | none | Define target-aware install / uninstall / verify support across multiple runtime targets (`claude-code`, `copilot-vscode`, `all`) and stage Copilot compatibility wrappers/config placement | Future installation/runtime compatibility can expand beyond Claude Code without freezing the model at only two targets |
+| P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | `README.md` section: How to install; `design.md` section: Installation Model | none | Define target-aware install / uninstall / verify support across multiple runtime targets (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`) and stage Copilot compatibility wrappers/config placement | Future installation/runtime compatibility can expand beyond Claude Code without freezing the model at only two targets |
 
 ---
 
@@ -55,7 +55,7 @@ Target state
   → WebFetch template-heavy detection refined for low-text structured portal pages
   → future scraping/content-extraction candidates staged (Tavily Extract / Exa Contents)
   → bounded capability comparison captured
-  → future multiple-target install/runtime compatibility staged (`claude-code`, `copilot-vscode`, `all`)
+  → future multiple-target install/runtime compatibility staged (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`)
   → docs + verification updated
 ```
 
@@ -73,7 +73,7 @@ Target state
 | P6 | `phase-006-refine-webfetch-template-heavy-detection.md` | Approved | None | Approved As-Is | implemented and verified against fixture/runtime checks |
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | Approved | None | Approved As-Is | design slice staged and first bounded capability comparison recorded |
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | implementation in progress; repo verification passed, real-key smoke completed, and final release-sync still pending |
-| P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | implementation in progress; target-aware installer / uninstaller / verifier support and Copilot wrappers added, final doc-sync still pending |
+| P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | implementation in progress; target-aware installer / uninstaller / verifier support and Copilot wrappers added for VS Code + CLI, final doc-sync and verification still pending |
 
 ---
 
@@ -89,6 +89,7 @@ Target state
 - P8 is in progress and implements three supported WebFetch extraction backends with one active backend per request plus ordered fallback.
 - Real-key smoke is complete and confirms direct extraction success for Tavily Extract and Exa Contents plus real ordered fallback behavior in the installed hook.
 - P9 is now in progress and adds target-aware install / uninstall / verify support for multiple runtime targets rather than freezing the model at only two targets.
+- Current P9 expansion now covers Copilot on VS Code and Copilot CLI through the same wrapper pair, with VS Code user-hook config and repo-scoped Copilot CLI hook config kept explicit.
 - Native fallback policy must remain preserved through every phase.
 
 ---
@@ -107,7 +108,10 @@ End-to-end success should show:
 - WebFetch extraction now targets three interchangeable backends with one active backend per request and ordered fallback across the remaining providers
 - when `PRIMARY` is omitted, the initial provider is chosen randomly from available keyed providers
 - real-key smoke confirms direct success for Tavily Extract and Exa Contents and confirms real ordered fallback behavior in the installed hook
-- target-aware install / uninstall / verify now covers `claude-code`, `copilot-vscode`, and `all`
+- target-aware install / uninstall / verify now covers `claude-code`, `copilot-vscode`, `copilot-cli`, and `all`
+- Copilot verification must confirm both runtime shapes:
+  - VS Code / Claude-style payloads with `tool_name` and `tool_input`
+  - Copilot CLI payloads with `toolName` and stringified `toolArgs`
 - docs and verification scripts must still be finalized to reflect the shipped behavior
 
 ---

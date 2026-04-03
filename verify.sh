@@ -16,27 +16,32 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$TARGET" in
-  claude-code|copilot-vscode|all) ;;
+  claude-code|copilot-vscode|copilot-cli|all) ;;
   *)
     echo "Unsupported target: $TARGET" >&2
-    echo "Expected one of: claude-code, copilot-vscode, all" >&2
+    echo "Expected one of: claude-code, copilot-vscode, copilot-cli, all" >&2
     exit 1
     ;;
 esac
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERIFY_CLAUDE=0
-VERIFY_COPILOT=0
+VERIFY_COPILOT_VSCODE=0
+VERIFY_COPILOT_CLI=0
 case "$TARGET" in
   claude-code)
     VERIFY_CLAUDE=1
     ;;
   copilot-vscode)
-    VERIFY_COPILOT=1
+    VERIFY_COPILOT_VSCODE=1
+    ;;
+  copilot-cli)
+    VERIFY_COPILOT_CLI=1
     ;;
   all)
     VERIFY_CLAUDE=1
-    VERIFY_COPILOT=1
+    VERIFY_COPILOT_VSCODE=1
+    VERIFY_COPILOT_CLI=1
     ;;
 esac
 
@@ -55,7 +60,7 @@ node --check "${PROJECT_DIR}/hooks/shared/extract-providers/tavily.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/extract-providers/exa.cjs"
 node --check "${PROJECT_DIR}/hooks/websearch-custom.cjs"
 node --check "${PROJECT_DIR}/hooks/webfetch-scraper.cjs"
-if [ "$VERIFY_COPILOT" -eq 1 ]; then
+if [ "$VERIFY_COPILOT_VSCODE" -eq 1 ] || [ "$VERIFY_COPILOT_CLI" -eq 1 ]; then
   node --check "${PROJECT_DIR}/hooks/copilot-websearch.cjs"
   node --check "${PROJECT_DIR}/hooks/copilot-webfetch.cjs"
 fi
@@ -63,21 +68,37 @@ bash -n "${PROJECT_DIR}/install.sh"
 bash -n "${PROJECT_DIR}/uninstall.sh"
 
 printf '\n== Example config check ==\n'
-PROJECT_DIR_ENV="${PROJECT_DIR}" VERIFY_COPILOT_ENV="$VERIFY_COPILOT" node - <<'NODE'
+PROJECT_DIR_ENV="${PROJECT_DIR}" VERIFY_COPILOT_VSCODE_ENV="$VERIFY_COPILOT_VSCODE" VERIFY_COPILOT_CLI_ENV="$VERIFY_COPILOT_CLI" node - <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const projectDir = process.env.PROJECT_DIR_ENV;
-const verifyCopilot = process.env.VERIFY_COPILOT_ENV === '1';
+const verifyCopilotVsCode = process.env.VERIFY_COPILOT_VSCODE_ENV === '1';
+const verifyCopilotCli = process.env.VERIFY_COPILOT_CLI_ENV === '1';
 const settings = JSON.parse(fs.readFileSync(path.join(projectDir, 'settings.example.json'), 'utf8'));
+const summary = {
+  claudeHookCount: Array.isArray(settings?.hooks?.PreToolUse) ? settings.hooks.PreToolUse.length : 0,
+  copilotUserHookCount: 0,
+  copilotCliHookCount: 0,
+};
 if (!Array.isArray(settings?.hooks?.PreToolUse) || settings.hooks.PreToolUse.length < 2) {
   throw new Error('settings.example.json missing Claude PreToolUse hooks');
 }
-if (verifyCopilot) {
-  if (!Array.isArray(settings?.copilotHooksExample?.hooks?.PreToolUse) || settings.copilotHooksExample.hooks.PreToolUse.length < 2) {
-    throw new Error('settings.example.json missing Copilot PreToolUse hook example');
+if (verifyCopilotVsCode) {
+  const preToolUse = settings?.copilotHooksExample?.hooks?.preToolUse;
+  if (settings?.copilotHooksExample?.version !== 1 || !Array.isArray(preToolUse) || preToolUse.length < 2) {
+    throw new Error('settings.example.json missing Copilot user hook example');
   }
+  summary.copilotUserHookCount = preToolUse.length;
 }
-console.log(JSON.stringify({ claudeHookCount: settings.hooks.PreToolUse.length, copilotHookCount: settings?.copilotHooksExample?.hooks?.PreToolUse?.length || 0 }, null, 2));
+if (verifyCopilotCli) {
+  const repoHookFile = JSON.parse(fs.readFileSync(path.join(projectDir, '.github/hooks/claude-code-web-hooks.json'), 'utf8'));
+  const preToolUse = repoHookFile?.hooks?.preToolUse;
+  if (repoHookFile?.version !== 1 || !Array.isArray(preToolUse) || preToolUse.length < 2) {
+    throw new Error('.github/hooks/claude-code-web-hooks.json missing Copilot CLI preToolUse hooks');
+  }
+  summary.copilotCliHookCount = preToolUse.length;
+}
+console.log(JSON.stringify(summary, null, 2));
 NODE
 
 printf '\n== Fixture classification check ==\n'
@@ -247,8 +268,8 @@ const makeResult = (provider, label) => ({
 })();
 NODE
 
-if [ "$VERIFY_COPILOT" -eq 1 ]; then
-  printf '\n== Copilot wrapper check ==\n'
+if [ "$VERIFY_COPILOT_VSCODE" -eq 1 ]; then
+  printf '\n== Copilot VS Code wrapper check ==\n'
   PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -270,8 +291,43 @@ const child = spawnSync('node', [scriptPath], {
     COPILOT_WEBFETCH_TOOL_NAMES: 'fetchWebPage,readWebPage',
   },
 });
-if (typeof child.status !== 'number') throw new Error('Copilot wrapper did not exit cleanly');
-console.log(JSON.stringify({ status: child.status, stdoutPresent: !!child.stdout }, null, 2));
+if (typeof child.status !== 'number') throw new Error('Copilot VS Code wrapper did not exit cleanly');
+const parsed = JSON.parse(String(child.stdout || '').trim() || '{}');
+if (!parsed.hookSpecificOutput || !parsed.hookSpecificOutput.permissionDecision) {
+  throw new Error('Copilot VS Code wrapper did not return Claude/VS Code hook output');
+}
+console.log(JSON.stringify({ status: child.status, permissionDecision: parsed.hookSpecificOutput.permissionDecision }, null, 2));
+NODE
+fi
+
+if [ "$VERIFY_COPILOT_CLI" -eq 1 ]; then
+  printf '\n== Copilot CLI wrapper check ==\n'
+  PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
+const path = require('path');
+const { spawnSync } = require('child_process');
+const projectDir = process.env.PROJECT_DIR_ENV;
+const scriptPath = path.join(projectDir, 'hooks/copilot-webfetch.cjs');
+const payload = JSON.stringify({
+  toolName: 'fetchWebPage',
+  toolArgs: JSON.stringify({
+    uri: 'https://example.com',
+    prompt: 'read page',
+  }),
+});
+const child = spawnSync('node', [scriptPath], {
+  input: payload,
+  encoding: 'utf8',
+  env: {
+    ...process.env,
+    COPILOT_CLI_WEBFETCH_TOOL_NAMES: 'fetchWebPage,readWebPage',
+  },
+});
+if (typeof child.status !== 'number') throw new Error('Copilot CLI wrapper did not exit cleanly');
+const parsed = JSON.parse(String(child.stdout || '').trim() || '{}');
+if (!parsed.permissionDecision) {
+  throw new Error('Copilot CLI wrapper did not return CLI permission output');
+}
+console.log(JSON.stringify({ status: child.status, permissionDecision: parsed.permissionDecision }, null, 2));
 NODE
 fi
 

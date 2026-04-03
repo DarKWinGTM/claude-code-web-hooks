@@ -49,7 +49,7 @@ Provide a reusable standalone hook layer that can be installed directly into Cla
 ### Current provider scope
 Current implementation scope is now split by role:
 - WebSearch path = WebSearchAPI.ai + Tavily Search + Exa Search
-- WebFetch scraper path = WebSearchAPI.ai
+- WebFetch extraction path = WebSearchAPI.ai Scrape + Tavily Extract + Exa Contents
 
 This is a current implementation decision, not a claim that this provider set is final forever.
 If a stronger provider is identified later, provider selection can be expanded while keeping the same runtime-hook architecture.
@@ -57,7 +57,8 @@ If a stronger provider is identified later, provider selection can be expanded w
 ### Current implementation goal update
 The current implementation goal is:
 - stabilize the multi-provider WebSearch architecture across WebSearchAPI.ai, Tavily Search, and Exa Search
-- keep WebFetch extraction on the current stable path until a later extract-provider expansion phase is justified
+- keep WebFetch extraction on the current three-backend fallback path
+- extend the runtime-compatibility layer across Claude Code, Copilot on VS Code, and Copilot CLI without changing the shared provider core
 
 ---
 
@@ -243,11 +244,12 @@ Current design implication:
 - all three providers should remain interchangeable extraction backends for the same WebFetch job rather than splitting responsibilities between them
 
 ### Exa in the current architecture
-Exa is now an active search-provider adapter in this project.
+Exa is now an active provider in both major paths of this project.
 
 Current recommendation:
-- keep Exa in the search layer, not the active WebFetch layer for now
-- continue routing Exa through the shared search-provider abstraction and policy layer
+- keep Exa in the shared provider architecture rather than adding Exa-specific side paths
+- continue routing Exa Search through the shared search-provider abstraction and policy layer
+- continue routing Exa Contents through the shared extraction-provider abstraction and fallback policy layer
 - do not bypass the current provider architecture for Exa-specific behavior
 
 ---
@@ -268,8 +270,9 @@ Provide installer utility:
 - support target-aware install modes
   - `claude-code`
   - `copilot-vscode`
+  - `copilot-cli`
   - `all`
-- keep shared core logic reusable while allowing runtime-specific wrappers/config placement
+- keep shared core logic reusable while allowing runtime-specific wrappers/config placement and Copilot CLI repo-hook compatibility
 
 ---
 

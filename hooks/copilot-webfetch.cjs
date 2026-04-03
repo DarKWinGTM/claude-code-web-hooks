@@ -2,21 +2,27 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
 
-function allow() {
-  console.log(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      permissionDecision: 'allow',
-    },
-  }));
+function emitAllow(runtime) {
+  if (runtime === 'copilot-cli') {
+    console.log(JSON.stringify({ permissionDecision: 'allow' }));
+  } else {
+    console.log(JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'allow',
+      },
+    }));
+  }
   process.exit(0);
 }
 
-function parseCsvEnv(name) {
-  return String(process.env[name] || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+function parseCsvEnv(names) {
+  const values = [];
+  for (const name of names) {
+    const raw = String(process.env[name] || '');
+    raw.split(',').map((item) => item.trim()).filter(Boolean).forEach((item) => values.push(item));
+  }
+  return [...new Set(values)];
 }
 
 function firstString(values) {
@@ -24,6 +30,50 @@ function firstString(values) {
     if (typeof value === 'string' && value.trim()) return value.trim();
   }
   return '';
+}
+
+function detectRuntime(data) {
+  if (Object.prototype.hasOwnProperty.call(data, 'toolName') || Object.prototype.hasOwnProperty.call(data, 'toolArgs')) {
+    return 'copilot-cli';
+  }
+  return 'copilot-vscode';
+}
+
+function parseCliArgs(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function extractToolContext(data, runtime) {
+  if (runtime === 'copilot-cli') {
+    const toolName = String(data.toolName || '').trim();
+    const toolInput = parseCliArgs(data.toolArgs);
+    return { toolName, toolInput };
+  }
+  return {
+    toolName: String(data.tool_name || '').trim(),
+    toolInput: data.tool_input || {},
+  };
+}
+
+function mapChildOutputForCli(rawStdout) {
+  try {
+    const parsed = JSON.parse(String(rawStdout || '').trim() || '{}');
+    const hookSpecificOutput = parsed.hookSpecificOutput || {};
+    const out = {};
+    if (hookSpecificOutput.permissionDecision) out.permissionDecision = hookSpecificOutput.permissionDecision;
+    if (hookSpecificOutput.permissionDecisionReason) out.permissionDecisionReason = hookSpecificOutput.permissionDecisionReason;
+    if (hookSpecificOutput.updatedInput) out.modifiedArgs = JSON.stringify(hookSpecificOutput.updatedInput);
+    if (hookSpecificOutput.additionalContext) out.additionalContext = hookSpecificOutput.additionalContext;
+    if (!out.permissionDecision) out.permissionDecision = 'allow';
+    return JSON.stringify(out);
+  } catch {
+    return JSON.stringify({ permissionDecision: 'allow' });
+  }
 }
 
 let input = '';
@@ -35,22 +85,22 @@ process.stdin.on('end', () => {
   processHook();
 });
 process.stdin.on('error', () => {
-  allow();
+  emitAllow('copilot-vscode');
 });
 
 function processHook() {
   try {
     const data = JSON.parse(input);
-    const toolName = String(data.tool_name || '').trim();
-    const supportedToolNames = parseCsvEnv('COPILOT_WEBFETCH_TOOL_NAMES');
+    const runtime = detectRuntime(data);
+    const { toolName, toolInput } = extractToolContext(data, runtime);
+    const supportedToolNames = parseCsvEnv(['COPILOT_WEBFETCH_TOOL_NAMES', 'COPILOT_CLI_WEBFETCH_TOOL_NAMES']);
     if (!toolName || supportedToolNames.length === 0 || !supportedToolNames.includes(toolName)) {
-      allow();
+      emitAllow(runtime);
     }
 
-    const toolInput = data.tool_input || {};
     const url = firstString([toolInput.url, toolInput.uri]);
     const prompt = firstString([toolInput.prompt, toolInput.query, toolInput.searchQuery]);
-    if (!url) allow();
+    if (!url) emitAllow(runtime);
 
     const claudePayload = JSON.stringify({
       tool_name: 'WebFetch',
@@ -67,10 +117,16 @@ function processHook() {
       env: process.env,
     });
 
-    if (child.stdout) process.stdout.write(child.stdout);
     if (child.stderr) process.stderr.write(child.stderr);
+
+    if (runtime === 'copilot-cli') {
+      process.stdout.write(mapChildOutputForCli(child.stdout));
+      process.exit(0);
+    }
+
+    if (child.stdout) process.stdout.write(child.stdout);
     process.exit(typeof child.status === 'number' ? child.status : 0);
   } catch {
-    allow();
+    emitAllow('copilot-vscode');
   }
 }

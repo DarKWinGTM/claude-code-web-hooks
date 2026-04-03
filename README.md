@@ -1,10 +1,10 @@
 # Claude Code Web Hooks
 
-Standalone hook-tool project for **Claude Code** that augments two built-in tool paths at the client runtime layer:
+Standalone hook-tool project for **Claude Code** with compatibility wrappers for **GitHub Copilot on VS Code** and **GitHub Copilot CLI** that augments two built-in tool paths at the client runtime layer:
 - `WebSearch`
 - `WebFetch`
 
-This project is intentionally designed for **Claude Code only**. It relies on Claude Code hook events such as `PreToolUse`, so it should be treated as a Claude Code runtime integration rather than a general gateway/server feature.
+The shared core is designed around the Claude-style hook flow, then adapted through runtime-specific wrappers/config for Copilot targets. It should still be treated as a client-side runtime integration rather than a general gateway/server feature.
 
 ### Why this tool exists
 This project solves a practical gap that appears when Claude Code is used with **custom endpoints** or third-party model paths.
@@ -329,26 +329,31 @@ After install:
 The installer / uninstaller / verifier now support these targets:
 - `claude-code`
 - `copilot-vscode`
+- `copilot-cli`
 - `all`
 
 Current direction:
 - keep the current Claude Code path working
 - add Copilot-on-VS-Code compatibility through runtime-specific wrapper/config placement
-- allow `all` so both targets can be installed together from one command
-- keep the model open to additional targets later, rather than freezing it as a dual-target-only design
+- add Copilot CLI compatibility through the same wrappers plus repo-scoped hook config
+- allow `all` so every currently supported target can be installed together from one command
+- keep the model open to additional targets later, rather than freezing it as a two-target design
 
 Examples:
 ```bash
 ./install.sh --target claude-code
 ./install.sh --target copilot-vscode
+./install.sh --target copilot-cli
 ./install.sh --target all
 
 ./uninstall.sh --target claude-code
 ./uninstall.sh --target copilot-vscode
+./uninstall.sh --target copilot-cli
 ./uninstall.sh --target all
 
 ./verify.sh --target claude-code
 ./verify.sh --target copilot-vscode
+./verify.sh --target copilot-cli
 ./verify.sh --target all
 ```
 
@@ -367,14 +372,26 @@ Examples:
    - `hooks/copilot-websearch.cjs`
    - `hooks/copilot-webfetch.cjs`
 2. Keep the shared core logic available in the same repo/workspace
-3. Add a hook config file in one supported Copilot location, for example:
-   - workspace: `.github/hooks/claude-code-web-hooks.json`
+3. Add a user hook config file, for example:
    - user: `~/.copilot/hooks/claude-code-web-hooks.json`
-4. Point the hook commands at the Copilot wrapper scripts
+4. The installed user hook config points at the installed wrapper scripts in `~/.claude/hooks/`
 5. Set `COPILOT_WEBSEARCH_TOOL_NAMES` and `COPILOT_WEBFETCH_TOOL_NAMES` to the tool names you want the wrappers to intercept
 
+#### Copilot CLI
+1. Keep the wrapper hooks available:
+   - `hooks/copilot-websearch.cjs`
+   - `hooks/copilot-webfetch.cjs`
+2. Use the repo-scoped hook config under `.github/hooks/`
+3. Current checked official behavior:
+   - Copilot CLI loads hooks from the current working directory
+   - repo hook config lives under `.github/hooks/`
+   - hook config uses `version: 1` plus lower-camel event keys such as `preToolUse`
+4. The repo hook config points at the installed wrapper scripts in `~/.claude/hooks/`
+5. Set `COPILOT_CLI_WEBSEARCH_TOOL_NAMES` and `COPILOT_CLI_WEBFETCH_TOOL_NAMES` to the Copilot CLI tool names you want the wrappers to intercept
+6. The wrappers adapt Copilot CLI `toolName` / `toolArgs` input into the shared Claude-style core and map the child result back into CLI permission output
+
 #### All
-Install both the Claude Code path and the Copilot-on-VS-Code path together.
+Install the Claude Code path, Copilot-on-VS-Code path, and Copilot CLI path together.
 
 ---
 
@@ -392,9 +409,12 @@ What `uninstall.sh` now does depends on target:
 - `copilot-vscode`
   - removes Copilot compatibility wrappers from `~/.claude/hooks/`
   - removes the user-level Copilot hook config from `~/.copilot/hooks/`
-  - leaves the workspace example hook file in the repo
+  - leaves the repo-scoped Copilot CLI hook file in place
+- `copilot-cli`
+  - removes Copilot compatibility wrappers from `~/.claude/hooks/`
+  - leaves the repo-scoped `.github/hooks/` hook file in place
 - `all`
-  - removes both target paths together
+  - removes local installed targets together while keeping the repo-scoped example/runtime hook file
 
 ---
 
@@ -405,11 +425,14 @@ Use `settings.example.json` as the base example.
 
 The hook commands should point to the real installed paths under `~/.claude/hooks/` after running `install.sh`.
 
-For Copilot on VS Code, use the runtime-specific wrapper scripts instead:
+For Copilot targets, use the runtime-specific wrapper scripts instead:
 - `hooks/copilot-websearch.cjs`
 - `hooks/copilot-webfetch.cjs`
 
-These wrappers exist because Copilot currently has different tool names / tool-input shapes and ignores Claude matcher values.
+These wrappers exist because Copilot runtimes currently differ from Claude Code in two important ways:
+- VS Code reads Claude-style hook config but ignores matcher values and may use different tool names / input shapes
+- Copilot CLI uses `toolName` and stringified `toolArgs` in `preToolUse`, and expects CLI-style permission output
+- both Copilot targets are normalized through the same wrapper pair before reaching the shared core
 
 ### 2) Configure API keys
 The project currently uses **separate provider keys**:
@@ -539,8 +562,10 @@ What these keys do:
 - `WEBFETCH_SCRAPER_TIMEOUT`: legacy shared scraper timeout alias for backward compatibility
 - `CLAUDE_WEB_HOOKS_SEARCH_TIMEOUT`: shared default timeout for search providers
 - `TAVILY_SEARCH_TIMEOUT`, `EXA_SEARCH_TIMEOUT`: search provider-specific timeout overrides
-- `COPILOT_WEBSEARCH_TOOL_NAMES`: comma-separated Copilot tool names that the WebSearch wrapper should intercept
-- `COPILOT_WEBFETCH_TOOL_NAMES`: comma-separated Copilot tool names that the WebFetch wrapper should intercept
+- `COPILOT_WEBSEARCH_TOOL_NAMES`: comma-separated Copilot on VS Code tool names that the WebSearch wrapper should intercept
+- `COPILOT_WEBFETCH_TOOL_NAMES`: comma-separated Copilot on VS Code tool names that the WebFetch wrapper should intercept
+- `COPILOT_CLI_WEBSEARCH_TOOL_NAMES`: comma-separated Copilot CLI tool names that the WebSearch wrapper should intercept
+- `COPILOT_CLI_WEBFETCH_TOOL_NAMES`: comma-separated Copilot CLI tool names that the WebFetch wrapper should intercept
 - `CLAUDE_WEB_HOOKS_DEBUG`: debug logging for the hook layer
 
 ---
