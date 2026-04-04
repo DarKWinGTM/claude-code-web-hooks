@@ -70,6 +70,7 @@ WEBFETCH_SRC="${PROJECT_DIR}/hooks/webfetch-scraper.cjs"
 COPILOT_WEBSEARCH_SRC="${PROJECT_DIR}/hooks/copilot-websearch.cjs"
 COPILOT_WEBFETCH_SRC="${PROJECT_DIR}/hooks/copilot-webfetch.cjs"
 FAILURE_POLICY_SRC="${PROJECT_DIR}/hooks/shared/failure-policy.cjs"
+TOOL_NAMES_SRC="${PROJECT_DIR}/hooks/shared/tool-names.cjs"
 PROVIDER_CONFIG_SRC="${PROJECT_DIR}/hooks/shared/provider-config.cjs"
 SEARCH_PROVIDER_CONTRACT_SRC="${PROJECT_DIR}/hooks/shared/search-provider-contract.cjs"
 SEARCH_PROVIDER_POLICY_SRC="${PROJECT_DIR}/hooks/shared/search-provider-policy.cjs"
@@ -84,10 +85,13 @@ EXA_EXTRACTOR_SRC="${PROJECT_DIR}/hooks/shared/extract-providers/exa.cjs"
 WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-custom.cjs"
 WEBSEARCH_MCP_PASS_THROUGH_SRC="${PROJECT_DIR}/hooks/websearch-mcp-pass-through.cjs"
 WEBSEARCH_MCP_PASS_THROUGH_DST="${TARGET_HOOK_DIR}/websearch-mcp-pass-through.cjs"
+WEBSEARCH_MCP_COMPANION_SRC="${PROJECT_DIR}/hooks/websearch-mcp-companion.cjs"
+WEBSEARCH_MCP_COMPANION_DST="${TARGET_HOOK_DIR}/websearch-mcp-companion.cjs"
 WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-scraper.cjs"
 COPILOT_WEBSEARCH_DST="${TARGET_HOOK_DIR}/copilot-websearch.cjs"
 COPILOT_WEBFETCH_DST="${TARGET_HOOK_DIR}/copilot-webfetch.cjs"
 FAILURE_POLICY_DST="${TARGET_SHARED_DIR}/failure-policy.cjs"
+TOOL_NAMES_DST="${TARGET_SHARED_DIR}/tool-names.cjs"
 PROVIDER_CONFIG_DST="${TARGET_SHARED_DIR}/provider-config.cjs"
 SEARCH_PROVIDER_CONTRACT_DST="${TARGET_SHARED_DIR}/search-provider-contract.cjs"
 SEARCH_PROVIDER_POLICY_DST="${TARGET_SHARED_DIR}/search-provider-policy.cjs"
@@ -107,9 +111,11 @@ if [ "$INSTALL_CLAUDE" -eq 1 ]; then
   cp "${WEBSEARCH_SRC}" "${WEBSEARCH_DST}"
   if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
     cp "${WEBSEARCH_MCP_PASS_THROUGH_SRC}" "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+    cp "${WEBSEARCH_MCP_COMPANION_SRC}" "${WEBSEARCH_MCP_COMPANION_DST}"
   fi
   cp "${WEBFETCH_SRC}" "${WEBFETCH_DST}"
   cp "${FAILURE_POLICY_SRC}" "${FAILURE_POLICY_DST}"
+  cp "${TOOL_NAMES_SRC}" "${TOOL_NAMES_DST}"
   cp "${PROVIDER_CONFIG_SRC}" "${PROVIDER_CONFIG_DST}"
   cp "${SEARCH_PROVIDER_CONTRACT_SRC}" "${SEARCH_PROVIDER_CONTRACT_DST}"
   cp "${SEARCH_PROVIDER_POLICY_SRC}" "${SEARCH_PROVIDER_POLICY_DST}"
@@ -121,9 +127,9 @@ if [ "$INSTALL_CLAUDE" -eq 1 ]; then
   cp "${WEBSEARCHAPI_EXTRACTOR_SRC}" "${WEBSEARCHAPI_EXTRACTOR_DST}"
   cp "${TAVILY_EXTRACTOR_SRC}" "${TAVILY_EXTRACTOR_DST}"
   cp "${EXA_EXTRACTOR_SRC}" "${EXA_EXTRACTOR_DST}"
-  chmod 755 "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${PROVIDER_CONFIG_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${EXTRACT_PROVIDER_CONTRACT_DST}" "${EXTRACT_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}" "${WEBSEARCHAPI_EXTRACTOR_DST}" "${TAVILY_EXTRACTOR_DST}" "${EXA_EXTRACTOR_DST}"
+  chmod 755 "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${TOOL_NAMES_DST}" "${PROVIDER_CONFIG_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${EXTRACT_PROVIDER_CONTRACT_DST}" "${EXTRACT_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}" "${WEBSEARCHAPI_EXTRACTOR_DST}" "${TAVILY_EXTRACTOR_DST}" "${EXA_EXTRACTOR_DST}"
   if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
-    chmod 755 "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+    chmod 755 "${WEBSEARCH_MCP_PASS_THROUGH_DST}" "${WEBSEARCH_MCP_COMPANION_DST}"
   fi
 
   if [ -f "${TARGET_SETTINGS}" ]; then
@@ -133,13 +139,14 @@ if [ "$INSTALL_CLAUDE" -eq 1 ]; then
     cp "${TARGET_SETTINGS}" "${BACKUP_DIR}/settings.${TIMESTAMP}.json"
   fi
 
-  node - "${TARGET_SETTINGS}" "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${WEBSEARCH_MCP_PASS_THROUGH_DST}" "${INSTALL_CCS_MCP_PASS_THROUGH}" <<'NODE'
+  node - "${TARGET_SETTINGS}" "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${WEBSEARCH_MCP_PASS_THROUGH_DST}" "${WEBSEARCH_MCP_COMPANION_DST}" "${INSTALL_CCS_MCP_PASS_THROUGH}" <<'NODE'
 const fs = require('fs');
 const settingsPath = process.argv[2];
 const websearchHook = process.argv[3];
 const webfetchHook = process.argv[4];
 const websearchMcpPassThroughHook = process.argv[5];
-const installCcsMcpPassThrough = process.argv[6] === '1';
+const websearchMcpCompanionHook = process.argv[6];
+const installCcsMcpPassThrough = process.argv[7] === '1';
 
 const readJson = (file) => {
   try {
@@ -187,9 +194,31 @@ ensureHook('WebSearch', websearchHook);
 ensureHook('WebFetch', webfetchHook);
 let installedCcsMcpPassThrough = false;
 let preservedExistingCcsMcpMatcher = false;
+let installedCcsMcpCompanion = false;
+let preservedExistingCcsMcpPostToolUseMatcher = false;
 if (installCcsMcpPassThrough) {
   installedCcsMcpPassThrough = ensureHookIfAbsent('mcp__ccs-websearch__WebSearch', websearchMcpPassThroughHook, 30);
   preservedExistingCcsMcpMatcher = !installedCcsMcpPassThrough;
+
+  if (!settings.hooks.PostToolUse || !Array.isArray(settings.hooks.PostToolUse)) {
+    settings.hooks.PostToolUse = [];
+  }
+  const existingPostToolUse = settings.hooks.PostToolUse.find((entry) => entry && entry.matcher === 'mcp__ccs-websearch__WebSearch');
+  if (!existingPostToolUse) {
+    settings.hooks.PostToolUse.push({
+      matcher: 'mcp__ccs-websearch__WebSearch',
+      hooks: [
+        {
+          type: 'command',
+          command: `node \"${websearchMcpCompanionHook}\"`,
+          timeout: 120,
+        },
+      ],
+    });
+    installedCcsMcpCompanion = true;
+  } else {
+    preservedExistingCcsMcpPostToolUseMatcher = true;
+  }
 }
 
 fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
@@ -198,6 +227,12 @@ if (installCcsMcpPassThrough) {
     console.error('Installed optional CCS MCP pass-through matcher: mcp__ccs-websearch__WebSearch');
   } else if (preservedExistingCcsMcpMatcher) {
     console.error('Preserved existing matcher for: mcp__ccs-websearch__WebSearch');
+  }
+
+  if (installedCcsMcpCompanion) {
+    console.error('Installed optional CCS MCP PostToolUse companion matcher: mcp__ccs-websearch__WebSearch');
+  } else if (preservedExistingCcsMcpPostToolUseMatcher) {
+    console.error('Preserved existing PostToolUse matcher for: mcp__ccs-websearch__WebSearch');
   }
 }
 NODE
@@ -208,9 +243,12 @@ NODE
   if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
     printf 'Optional CCS MCP pass-through hook available at:\n'
     printf '  - %s\n' "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+    printf 'Optional CCS MCP PostToolUse companion hook available at:\n'
+    printf '  - %s\n' "${WEBSEARCH_MCP_COMPANION_DST}"
   fi
   printf 'Installed Claude Code shared helpers:\n'
   printf '  - %s\n' "${FAILURE_POLICY_DST}"
+  printf '  - %s\n' "${TOOL_NAMES_DST}"
   printf '  - %s\n' "${PROVIDER_CONFIG_DST}"
   printf '  - %s\n' "${SEARCH_PROVIDER_CONTRACT_DST}"
   printf '  - %s\n' "${SEARCH_PROVIDER_POLICY_DST}"
@@ -229,7 +267,8 @@ NODE
   if [ "$INSTALL_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
     printf 'CCS MCP coexistence matcher handling:\n'
     printf '  - matcher: mcp__ccs-websearch__WebSearch\n'
-    printf '  - mode: allow-only pass-through\n'
+    printf '  - PreToolUse mode: allow-only pass-through\n'
+    printf '  - PostToolUse mode: MCP output replacement with appended claude-code-web-hooks companion results\n'
   fi
   printf 'Backup created:\n'
   printf '  - %s\n' "${BACKUP_DIR}/settings.${TIMESTAMP}.json"

@@ -47,6 +47,7 @@ esac
 
 printf '== Syntax checks ==\n'
 node --check "${PROJECT_DIR}/hooks/shared/failure-policy.cjs"
+node --check "${PROJECT_DIR}/hooks/shared/tool-names.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/provider-config.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/search-provider-contract.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/search-provider-policy.cjs"
@@ -60,6 +61,7 @@ node --check "${PROJECT_DIR}/hooks/shared/extract-providers/tavily.cjs"
 node --check "${PROJECT_DIR}/hooks/shared/extract-providers/exa.cjs"
 node --check "${PROJECT_DIR}/hooks/websearch-custom.cjs"
 node --check "${PROJECT_DIR}/hooks/websearch-mcp-pass-through.cjs"
+node --check "${PROJECT_DIR}/hooks/websearch-mcp-companion.cjs"
 node --check "${PROJECT_DIR}/hooks/webfetch-scraper.cjs"
 if [ "$VERIFY_COPILOT_VSCODE" -eq 1 ] || [ "$VERIFY_COPILOT_CLI" -eq 1 ]; then
   node --check "${PROJECT_DIR}/hooks/copilot-websearch.cjs"
@@ -78,7 +80,8 @@ const verifyCopilotCli = process.env.VERIFY_COPILOT_CLI_ENV === '1';
 const settings = JSON.parse(fs.readFileSync(path.join(projectDir, 'settings.example.json'), 'utf8'));
 const summary = {
   claudeHookCount: Array.isArray(settings?.hooks?.PreToolUse) ? settings.hooks.PreToolUse.length : 0,
-  ccsMcpHookCount: 0,
+  ccsMcpPreToolUseHookCount: 0,
+  ccsMcpPostToolUseHookCount: 0,
   copilotUserHookCount: 0,
   copilotCliHookCount: 0,
 };
@@ -89,7 +92,12 @@ const ccsMcpPreToolUse = settings?.ccsMcpHooksExample?.hooks?.PreToolUse;
 if (!Array.isArray(ccsMcpPreToolUse) || ccsMcpPreToolUse.length < 1) {
   throw new Error('settings.example.json missing CCS MCP pass-through hook example');
 }
-summary.ccsMcpHookCount = ccsMcpPreToolUse.length;
+summary.ccsMcpPreToolUseHookCount = ccsMcpPreToolUse.length;
+const ccsMcpPostToolUse = settings?.ccsMcpHooksExample?.hooks?.PostToolUse;
+if (!Array.isArray(ccsMcpPostToolUse) || ccsMcpPostToolUse.length < 1) {
+  throw new Error('settings.example.json missing CCS MCP companion PostToolUse hook example');
+}
+summary.ccsMcpPostToolUseHookCount = ccsMcpPostToolUse.length;
 if (verifyCopilotVsCode) {
   const preToolUse = settings?.copilotHooksExample?.hooks?.preToolUse;
   if (settings?.copilotHooksExample?.version !== 1 || !Array.isArray(preToolUse) || preToolUse.length < 2) {
@@ -195,20 +203,22 @@ websearchapi.search = async ({ query }) => ({ ok: false, error: 'quota exceeded'
 })();
 NODE
 
-printf '\n== CCS MCP WebSearch pass-through check ==\n'
+printf '\n== CCS MCP WebSearch coexistence checks ==\n'
 PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { buildMcpCompanionHookOutput } = require(path.join(process.env.PROJECT_DIR_ENV, 'hooks/websearch-mcp-companion.cjs'));
 const projectDir = process.env.PROJECT_DIR_ENV;
-const scriptPath = path.join(projectDir, 'hooks/websearch-mcp-pass-through.cjs');
-const payload = JSON.stringify({
+const passThroughScriptPath = path.join(projectDir, 'hooks/websearch-mcp-pass-through.cjs');
+const payload = {
   tool_name: 'mcp__ccs-websearch__WebSearch',
   tool_input: {
     query: 'latest ccs docs',
   },
-});
-const child = spawnSync('node', [scriptPath], {
-  input: payload,
+  tool_response: 'Provider: DuckDuckGo\nResult count: 1\n1. CCS result\nURL: https://example.com/ccs\n',
+};
+const child = spawnSync('node', [passThroughScriptPath], {
+  input: JSON.stringify(payload),
   encoding: 'utf8',
   env: process.env,
 });
@@ -220,7 +230,64 @@ if (parsed?.hookSpecificOutput?.permissionDecision !== 'allow') {
 if (parsed?.hookSpecificOutput?.permissionDecisionReason) {
   throw new Error('CCS MCP pass-through hook should not substitute MCP results');
 }
-console.log(JSON.stringify({ status: child.status, permissionDecision: parsed.hookSpecificOutput.permissionDecision }, null, 2));
+
+(async () => {
+  const companion = await buildMcpCompanionHookOutput(payload, {
+    searchProvidersConfigured: true,
+    executePolicy: async () => ({
+      success: true,
+      successes: [
+        {
+          provider: 'tavily',
+          providerLabel: 'Tavily',
+          query: payload.tool_input.query,
+          items: [
+            {
+              title: 'Companion result',
+              url: 'https://example.com/companion',
+              summary: 'companion summary',
+            },
+          ],
+        },
+      ],
+      failures: [
+        {
+          provider: 'websearchapi',
+          error: 'quota exceeded',
+        },
+      ],
+    }),
+  });
+
+  if (!companion?.hookSpecificOutput?.updatedMCPToolOutput) {
+    throw new Error('CCS MCP companion hook did not return updatedMCPToolOutput');
+  }
+  if (companion?.hookSpecificOutput?.hookEventName !== 'PostToolUse') {
+    throw new Error('CCS MCP companion hook did not identify itself as PostToolUse');
+  }
+  if (!companion.hookSpecificOutput.updatedMCPToolOutput.includes('[CCS MCP WebSearch Result]')) {
+    throw new Error('CCS MCP companion output did not preserve original MCP result section');
+  }
+  if (!companion.hookSpecificOutput.updatedMCPToolOutput.includes('[claude-code-web-hooks Companion Result]')) {
+    throw new Error('CCS MCP companion output did not append companion result section');
+  }
+  if (!companion.hookSpecificOutput.updatedMCPToolOutput.includes('Companion result')) {
+    throw new Error('CCS MCP companion output did not include companion search content');
+  }
+
+  const skipped = await buildMcpCompanionHookOutput(payload, {
+    searchProvidersConfigured: false,
+  });
+  if (skipped !== null) {
+    throw new Error('CCS MCP companion hook should skip output when no provider key is configured');
+  }
+
+  console.log(JSON.stringify({
+    passThroughStatus: child.status,
+    permissionDecision: parsed.hookSpecificOutput.permissionDecision,
+    companionOutputMode: 'updatedMCPToolOutput',
+  }, null, 2));
+})();
 NODE
 
 printf '\n== WebFetch extraction provider policy check ==\n'

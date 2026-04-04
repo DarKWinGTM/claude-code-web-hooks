@@ -319,7 +319,8 @@ What `install.sh` currently does for `claude-code`:
 - backs up `~/.claude/settings.json` before editing
 - merges the required `PreToolUse -> WebSearch`
 - merges the required `PreToolUse -> WebFetch`
-- optionally adds a non-blocking pass-through matcher for `mcp__ccs-websearch__WebSearch` only when `--with-ccs-mcp-pass-through` is requested
+- optionally adds a non-blocking `PreToolUse` pass-through matcher for `mcp__ccs-websearch__WebSearch` only when `--with-ccs-mcp-pass-through` is requested
+- optionally adds a matching `PostToolUse` companion matcher for `mcp__ccs-websearch__WebSearch` so the original CCS MCP result and this repo’s companion result can be shown together
 - preserves unrelated Claude Code settings and preserves existing user-owned MCC/CCS matcher entries
 
 After install:
@@ -368,7 +369,9 @@ Examples:
 4. Copy the extraction provider adapters into `~/.claude/hooks/shared/extract-providers/`
 5. Merge the native `WebSearch` and `WebFetch` `hooks` block from `settings.example.json` into `~/.claude/settings.json`
 6. Add the env variables you want to use (`WEBSEARCHAPI_API_KEY`, `TAVILY_API_KEY`, and/or `EXA_API_KEY`)
-7. Only add the optional `ccsMcpHooksExample` block if you explicitly want a non-blocking coexistence matcher for `mcp__ccs-websearch__WebSearch`
+7. Only add the optional `ccsMcpHooksExample` block if you explicitly want the CCS MCP coexistence pair for `mcp__ccs-websearch__WebSearch`
+   - `PreToolUse` = allow-only pass-through
+   - `PostToolUse` = preserve the CCS MCP output and append the repo companion result
 
 #### Copilot on VS Code
 1. Copy the wrapper hooks:
@@ -443,9 +446,11 @@ If you also use the CCS MCP server and want this repo to explicitly recognize th
 
 Coexistence contract:
 - native `WebSearch` is still the only substitution path owned by this repo
-- `mcp__ccs-websearch__WebSearch` remains owned by CCS
-- the optional MCP matcher is allow-only pass-through
-- it must not substitute results or run a second search
+- `mcp__ccs-websearch__WebSearch` remains owned by CCS for the actual MCP search execution
+- the optional `PreToolUse` MCP matcher is allow-only pass-through
+- the optional `PostToolUse` MCP matcher builds a second provider-backed companion result from this repo
+- the `PostToolUse` hook replaces the visible MCP tool output with a combined payload that preserves the original CCS MCP result first and appends the `claude-code-web-hooks` companion result second
+- this means one MCP run can surface both outputs together without blocking CCS execution first
 
 ### 3) Configure API keys
 The project currently uses **separate provider keys**:
@@ -710,11 +715,12 @@ What it checks:
 - install/uninstall script syntax
 - example settings shape
 - native Claude hook config shape
-- optional CCS MCP pass-through hook example shape
+- optional CCS MCP `PreToolUse` pass-through and `PostToolUse` companion hook example shapes
 - fixture-based WebFetch classification
 - shared failure policy behavior
 - search provider policy availability
 - CCS MCP pass-through allow-only behavior
+- CCS MCP companion output replacement behavior via `updatedMCPToolOutput`
 - WebFetch extraction provider policy selection/fallback behavior
 - Copilot wrapper basic compatibility path
 - parallel-mode aggregation sanity

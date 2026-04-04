@@ -1,6 +1,6 @@
 # Claude Code Web Hooks - TODO
 
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-04
 
 ---
 
@@ -58,7 +58,9 @@
 - [x] Extend the Copilot compatibility layer to also support Copilot CLI payload/input-output rules
 - [x] Define multiple-target installer semantics that keep the design open to future targets beyond `claude-code` and `copilot-vscode`
 - [x] Add explicit non-blocking coexistence support for CCS MCP WebSearch (`mcp__ccs-websearch__WebSearch`) without taking ownership of the MCP tool path
+- [x] Extend CCS MCP coexistence so the original CCS MCP result and a `claude-code-web-hooks` companion result can both be surfaced together via `PostToolUse`
 - [x] Verify native WebSearch substitution and CCS MCP pass-through together without double-search behavior
+- [x] Verify CCS MCP companion replacement behavior with preserved original MCP output plus appended companion results
 
 ### Release readiness checklist
 - [x] Add `.gitignore`
@@ -78,6 +80,7 @@
 
 | Date | Changes |
 |------|---------|
+| 2026-04-04 | Extended CCS MCP coexistence from allow-only pass-through into a dual-output model: added a `PostToolUse` companion hook that preserves the original CCS MCP result and appends a `claude-code-web-hooks` companion result via `updatedMCPToolOutput`, then synced install/uninstall/settings/verify/docs/phase artifacts to the new contract. |
 | 2026-03-28 | Implemented and verified the narrow WebFetch heuristic refinement for low-text structured portal pages, then completed the three-backend WebFetch extraction rollout in repo state: added interchangeable extraction backends for WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents; added one-active-backend-per-request selection with ordered fallback; updated install/uninstall/settings/verify/docs/phase files; completed real-key smoke testing for Tavily Extract and Exa Contents plus ordered fallback behavior; and staged then implemented target-aware install / uninstall / verify support for the multiple-target model (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`) including Copilot compatibility wrappers and Copilot CLI repo-hook support. |
 | 2026-03-27 | Audited `design.md` and `phase/` against the current implementation, aligned wording to the active provider set (WebSearchAPI.ai, Tavily, Exa), normalized phase titles to `001`-`005`, and closed stale TODO items that had already been implemented. |
 | 2026-03-20 | Created new standalone project scaffold `claude-code-web-hooks` with initial design, changelog, and TODO to separate web hook logic from external gateway/runtime ownership. |

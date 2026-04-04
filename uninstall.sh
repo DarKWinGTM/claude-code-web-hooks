@@ -63,8 +63,10 @@ esac
 
 WEBSEARCH_DST="${TARGET_HOOK_DIR}/websearch-custom.cjs"
 WEBSEARCH_MCP_PASS_THROUGH_DST="${TARGET_HOOK_DIR}/websearch-mcp-pass-through.cjs"
+WEBSEARCH_MCP_COMPANION_DST="${TARGET_HOOK_DIR}/websearch-mcp-companion.cjs"
 WEBFETCH_DST="${TARGET_HOOK_DIR}/webfetch-scraper.cjs"
 FAILURE_POLICY_DST="${TARGET_SHARED_DIR}/failure-policy.cjs"
+TOOL_NAMES_DST="${TARGET_SHARED_DIR}/tool-names.cjs"
 PROVIDER_CONFIG_DST="${TARGET_SHARED_DIR}/provider-config.cjs"
 SEARCH_PROVIDER_CONTRACT_DST="${TARGET_SHARED_DIR}/search-provider-contract.cjs"
 SEARCH_PROVIDER_POLICY_DST="${TARGET_SHARED_DIR}/search-provider-policy.cjs"
@@ -104,14 +106,26 @@ if (settings.hooks && Array.isArray(settings.hooks.PreToolUse)) {
   });
 }
 
+if (settings.hooks && Array.isArray(settings.hooks.PostToolUse)) {
+  settings.hooks.PostToolUse = settings.hooks.PostToolUse.filter((entry) => {
+    if (!entry || !Array.isArray(entry.hooks) || typeof entry.matcher !== 'string') return true;
+    const commands = entry.hooks
+      .filter((hook) => hook && hook.type === 'command' && typeof hook.command === 'string')
+      .map((hook) => hook.command);
+
+    const ownsWebSearchMcpCompanion = removeCcsMcpPassThrough && entry.matcher === 'mcp__ccs-websearch__WebSearch' && commands.some((cmd) => cmd.includes('websearch-mcp-companion.cjs'));
+    return !ownsWebSearchMcpCompanion;
+  });
+}
+
 fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
 NODE
 fi
 
 if [ "$REMOVE_CLAUDE" -eq 1 ]; then
-  rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${PROVIDER_CONFIG_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${EXTRACT_PROVIDER_CONTRACT_DST}" "${EXTRACT_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}" "${WEBSEARCHAPI_EXTRACTOR_DST}" "${TAVILY_EXTRACTOR_DST}" "${EXA_EXTRACTOR_DST}"
+  rm -f "${WEBSEARCH_DST}" "${WEBFETCH_DST}" "${FAILURE_POLICY_DST}" "${TOOL_NAMES_DST}" "${PROVIDER_CONFIG_DST}" "${SEARCH_PROVIDER_CONTRACT_DST}" "${SEARCH_PROVIDER_POLICY_DST}" "${EXTRACT_PROVIDER_CONTRACT_DST}" "${EXTRACT_PROVIDER_POLICY_DST}" "${WEBSEARCHAPI_PROVIDER_DST}" "${TAVILY_PROVIDER_DST}" "${EXA_PROVIDER_DST}" "${WEBSEARCHAPI_EXTRACTOR_DST}" "${TAVILY_EXTRACTOR_DST}" "${EXA_EXTRACTOR_DST}"
   if [ "$REMOVE_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
-    rm -f "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+    rm -f "${WEBSEARCH_MCP_PASS_THROUGH_DST}" "${WEBSEARCH_MCP_COMPANION_DST}"
   fi
 
   printf 'Removed Claude Code hooks if present:\n'
@@ -120,9 +134,12 @@ if [ "$REMOVE_CLAUDE" -eq 1 ]; then
   if [ "$REMOVE_CCS_MCP_PASS_THROUGH" -eq 1 ]; then
     printf 'Removed optional CCS MCP pass-through hook if present:\n'
     printf '  - %s\n' "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
+    printf 'Removed optional CCS MCP PostToolUse companion hook if present:\n'
+    printf '  - %s\n' "${WEBSEARCH_MCP_COMPANION_DST}"
   fi
   printf 'Removed Claude Code shared helpers if present:\n'
   printf '  - %s\n' "${FAILURE_POLICY_DST}"
+  printf '  - %s\n' "${TOOL_NAMES_DST}"
   printf '  - %s\n' "${PROVIDER_CONFIG_DST}"
   printf '  - %s\n' "${SEARCH_PROVIDER_CONTRACT_DST}"
   printf '  - %s\n' "${SEARCH_PROVIDER_POLICY_DST}"

@@ -1,16 +1,43 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.6
+> **Current Version:** 0.1.7
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
 > **Last Updated:** 2026-04-04
 
 ---
 
+## Version 0.1.7 - 2026-04-04
+
+### Added
+- Added `hooks/websearch-mcp-pass-through.cjs` as an allow-only `PreToolUse` coexistence hook for `mcp__ccs-websearch__WebSearch`
+- Added `hooks/websearch-mcp-companion.cjs` as a `PostToolUse` companion hook for `mcp__ccs-websearch__WebSearch`
+- Added optional `ccsMcpHooksExample` config in `settings.example.json` with both `PreToolUse` and `PostToolUse` MCP hook entries
+- Added governed coexistence artifacts:
+  - `phase/phase-010-stage-websearch-mcp-coexistence.md`
+  - `patch/websearch-mcp-coexistence.patch.md`
+
+### Updated
+- Updated the native WebSearch hook so it explicitly allows the CCS MCP tool path instead of trying to substitute it
+- Updated install/uninstall flow to support optional CCS MCP coexistence installation with `--with-ccs-mcp-pass-through`, including the matching `PostToolUse` companion hook while keeping both MCP-owned behaviors out of the default install/uninstall path
+- Centralized the CCS MCP tool name in a shared hook constant so the native hook, MCP pass-through hook, MCP companion hook, and Copilot wrapper do not drift on raw string matching
+- Updated verification coverage to prove pass-through plus dual-output replacement behavior for `mcp__ccs-websearch__WebSearch`
+- Updated README, design, TODO, and phase summary to distinguish native WebSearch substitution from optional CCS MCP coexistence with appended companion results
+
+### Notes
+- Native `WebSearch` remains the only substitution path owned by this repo
+- `mcp__ccs-websearch__WebSearch` still executes through CCS, while this repo now optionally appends a second companion result after the MCP tool completes
+- The MCP coexistence model is now:
+  - `PreToolUse` = allow-only pass-through
+  - `PostToolUse` = replace visible MCP output with a combined original-plus-companion payload
+- The installed hook set now also ships the shared `tool-names.cjs` helper so local installed hooks do not fail on missing shared constant imports
+
+---
+
 ## Version 0.1.6 - 2026-04-04
 
 ### Added
-- Added `hooks/websearch-mcp-pass-through.cjs` as an allow-only coexistence hook for `mcp__ccs-websearch__WebSearch`
+- Added `hooks/websearch-mcp-pass-through.cjs` as an allow-only `PreToolUse` coexistence hook for `mcp__ccs-websearch__WebSearch`
 - Added optional `ccsMcpHooksExample` config in `settings.example.json`
 - Added governed coexistence artifacts:
   - `phase/phase-010-stage-websearch-mcp-coexistence.md`
@@ -19,13 +46,16 @@
 ### Updated
 - Updated the native WebSearch hook so it explicitly allows the CCS MCP tool path instead of trying to substitute it
 - Updated install/uninstall flow to support optional CCS MCP pass-through installation with `--with-ccs-mcp-pass-through`, while keeping the pass-through file itself out of the default install/uninstall ownership path
+- Kept the original allow-only coexistence model for environments that need pass-through only
 - Centralized the CCS MCP tool name in a shared hook constant so the native hook, MCP pass-through hook, and Copilot wrapper do not drift on raw string matching
 - Updated verification coverage to prove pass-through / no-block / no-double-search behavior for `mcp__ccs-websearch__WebSearch`
+- The 0.1.6 slice remained the pass-through-only coexistence release before the dual-output companion extension in 0.1.7
 - Updated README, design, TODO, and phase summary to distinguish native WebSearch substitution from optional CCS MCP coexistence
 
 ### Notes
 - Native `WebSearch` remains the only substitution path owned by this repo
-- `mcp__ccs-websearch__WebSearch` remains owned by CCS and is supported here only as an allow-only coexistence matcher
+- `mcp__ccs-websearch__WebSearch` remains owned by CCS and is supported here as an allow-only coexistence matcher in the 0.1.6 release boundary
+- The installed hook set now also ships the shared `tool-names.cjs` helper so local installed hooks do not fail on missing shared constant imports
 
 ---
 
