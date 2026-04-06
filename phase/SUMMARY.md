@@ -37,7 +37,7 @@ The shipped goal now includes:
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | `design.md` sections: Detection Model for WebFetch, Multi-provider direction | none | Define a bounded scraping/content-extraction design slice for Tavily Extract and Exa Contents while keeping WebSearchAPI.ai Scrape as the active backend | Future WebFetch extractor expansion is staged without changing the current runtime path |
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | `design.md` section: WebFetch extraction backends | none | Implement selectable WebFetch extraction backends across WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents with one active backend per request and ordered fallback | Three interchangeable extraction backends are available from the first runtime implementation |
 | P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | `README.md` section: How to install; `design.md` section: Installation Model | none | Define target-aware install / uninstall / verify support across multiple runtime targets (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`) and stage Copilot compatibility wrappers/config placement | Future installation/runtime compatibility can expand beyond Claude Code without freezing the model at only two targets |
-| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | `design.md` sections: WebSearch hook, Fallback Philosophy, Installation Model | `patch/websearch-mcp-coexistence.patch.md` | Add explicit non-blocking coexistence support for `mcp__ccs-websearch__WebSearch` while preserving exact native `WebSearch` substitution ownership and appending a second companion result after MCP completion | Native WebSearch and CCS MCP WebSearch can coexist without blocking, while one MCP run can show both the original CCS result and the repo companion result |
+| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | `design.md` sections: WebSearch hook, Fallback Philosophy, Installation Model | `patch/websearch-mcp-coexistence.patch.md` | Add explicit non-blocking coexistence support for `mcp__ccs-websearch__WebSearch` while preserving exact native `WebSearch` substitution ownership, appending a second companion result after MCP completion, and surfacing provider-backed fallback context when CCS MCP search fails | Native WebSearch and CCS MCP WebSearch can coexist without blocking, while successful MCP runs can show both the original CCS result and the repo companion result, and failed MCP runs can still surface repo fallback context |
 
 ---
 
@@ -78,7 +78,7 @@ Target state
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | Approved | None | Approved As-Is | design slice staged and first bounded capability comparison recorded |
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | Approved | None | Approved As-Is | completed |
 | P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved | None | Approved As-Is | completed |
-| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | Approved With Follow-up | Follow-Up | May Proceed With Follow-Up | implementation and release sync in progress |
+| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | Approved | None | Approved As-Implemented | implementation and verification now cover success-side dual output plus failure-side fallback context |
 
 ---
 
@@ -95,7 +95,7 @@ Target state
 - Real-key smoke is complete and confirms direct extraction success for Tavily Extract and Exa Contents plus real ordered fallback behavior in the installed hook.
 - P9 is complete and adds target-aware install / uninstall / verify support for multiple runtime targets rather than freezing the model at only two targets.
 - Current P9 expansion now covers Copilot on VS Code and Copilot CLI through the same wrapper pair, with VS Code user-hook config and repo-scoped Copilot CLI hook config kept explicit.
-- P10 is in progress and adds an explicit coexistence boundary for the CCS MCP WebSearch tool so the project can recognize `mcp__ccs-websearch__WebSearch` without taking ownership of that MCP path, while still appending a second provider-backed companion result after CCS finishes the MCP search.
+- P10 is complete and adds an explicit coexistence boundary for the CCS MCP WebSearch tool so the project can recognize `mcp__ccs-websearch__WebSearch` without taking ownership of that MCP path, while still appending a second provider-backed companion result after CCS finishes the MCP search and adding provider-backed fallback context through `PostToolUseFailure` when CCS MCP search fails.
 - Native fallback policy must remain preserved through every phase.
 
 ---
@@ -124,6 +124,7 @@ End-to-end success should show:
   - the `PostToolUse` companion path can replace the visible MCP output with a combined original-plus-companion payload
   - the original CCS MCP result remains visible first inside that combined payload
   - the appended companion section contains provider-backed results from this repo
+  - failed CCS MCP runs can still trigger repo fallback context through `PostToolUseFailure -> additionalContext`
   - the MCP path does not trigger duplicate provider execution before the original CCS run completes
 - docs and verification scripts now reflect the shipped behavior
 

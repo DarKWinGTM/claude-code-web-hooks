@@ -196,6 +196,8 @@ let installedCcsMcpPassThrough = false;
 let preservedExistingCcsMcpMatcher = false;
 let installedCcsMcpCompanion = false;
 let preservedExistingCcsMcpPostToolUseMatcher = false;
+let installedCcsMcpFailureFallback = false;
+let preservedExistingCcsMcpPostToolUseFailureMatcher = false;
 if (installCcsMcpPassThrough) {
   installedCcsMcpPassThrough = ensureHookIfAbsent('mcp__ccs-websearch__WebSearch', websearchMcpPassThroughHook, 30);
   preservedExistingCcsMcpMatcher = !installedCcsMcpPassThrough;
@@ -219,6 +221,26 @@ if (installCcsMcpPassThrough) {
   } else {
     preservedExistingCcsMcpPostToolUseMatcher = true;
   }
+
+  if (!settings.hooks.PostToolUseFailure || !Array.isArray(settings.hooks.PostToolUseFailure)) {
+    settings.hooks.PostToolUseFailure = [];
+  }
+  const existingPostToolUseFailure = settings.hooks.PostToolUseFailure.find((entry) => entry && entry.matcher === 'mcp__ccs-websearch__WebSearch');
+  if (!existingPostToolUseFailure) {
+    settings.hooks.PostToolUseFailure.push({
+      matcher: 'mcp__ccs-websearch__WebSearch',
+      hooks: [
+        {
+          type: 'command',
+          command: `node \"${websearchMcpCompanionHook}\"`,
+          timeout: 120,
+        },
+      ],
+    });
+    installedCcsMcpFailureFallback = true;
+  } else {
+    preservedExistingCcsMcpPostToolUseFailureMatcher = true;
+  }
 }
 
 fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
@@ -233,6 +255,12 @@ if (installCcsMcpPassThrough) {
     console.error('Installed optional CCS MCP PostToolUse companion matcher: mcp__ccs-websearch__WebSearch');
   } else if (preservedExistingCcsMcpPostToolUseMatcher) {
     console.error('Preserved existing PostToolUse matcher for: mcp__ccs-websearch__WebSearch');
+  }
+
+  if (installedCcsMcpFailureFallback) {
+    console.error('Installed optional CCS MCP PostToolUseFailure fallback matcher: mcp__ccs-websearch__WebSearch');
+  } else if (preservedExistingCcsMcpPostToolUseFailureMatcher) {
+    console.error('Preserved existing PostToolUseFailure matcher for: mcp__ccs-websearch__WebSearch');
   }
 }
 NODE
@@ -269,6 +297,7 @@ NODE
     printf '  - matcher: mcp__ccs-websearch__WebSearch\n'
     printf '  - PreToolUse mode: allow-only pass-through\n'
     printf '  - PostToolUse mode: MCP output replacement with appended claude-code-web-hooks companion results\n'
+    printf '  - PostToolUseFailure mode: additional fallback context with provider-backed results when CCS MCP search fails\n'
   fi
   printf 'Backup created:\n'
   printf '  - %s\n' "${BACKUP_DIR}/settings.${TIMESTAMP}.json"

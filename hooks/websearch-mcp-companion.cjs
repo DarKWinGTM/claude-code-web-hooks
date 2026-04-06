@@ -24,6 +24,16 @@ function stringifyToolResponse(toolResponse) {
   }
 }
 
+function stringifyToolError(toolError) {
+  if (toolError == null) return '';
+  if (typeof toolError === 'string') return toolError.trim();
+  try {
+    return JSON.stringify(toolError, null, 2).trim();
+  } catch {
+    return String(toolError).trim();
+  }
+}
+
 function formatCombinedOutput({ originalToolResponse, companionOutput }) {
   const originalOutput = stringifyToolResponse(originalToolResponse);
   const companionText = String(companionOutput || '').trim();
@@ -37,6 +47,29 @@ function formatCombinedOutput({ originalToolResponse, companionOutput }) {
     '',
     companionText || 'No companion search result was returned.',
   ];
+
+  return lines.join('\n').trim();
+}
+
+function formatFailureAdditionalContext({ originalError, companionOutput }) {
+  const errorText = stringifyToolError(originalError);
+  const companionText = String(companionOutput || '').trim();
+  const lines = [
+    '[claude-code-web-hooks Failure Fallback]',
+    '',
+    'The original CCS MCP WebSearch run failed, so claude-code-web-hooks executed its own provider-backed fallback search.',
+  ];
+
+  if (errorText) {
+    lines.push('', '[Original CCS MCP Error]', '', errorText);
+  }
+
+  lines.push(
+    '',
+    '[claude-code-web-hooks Fallback Result]',
+    '',
+    companionText || 'No fallback search result was returned.'
+  );
 
   return lines.join('\n').trim();
 }
@@ -67,6 +100,11 @@ async function buildMcpCompanionHookOutput(data, options = {}) {
     return null;
   }
 
+  const hookEventName = typeof data?.hook_event_name === 'string'
+    ? data.hook_event_name.trim()
+    : (typeof data?.hookEventName === 'string' ? data.hookEventName.trim() : '');
+  const eventName = hookEventName || (data?.error != null ? 'PostToolUseFailure' : 'PostToolUse');
+
   const policyResult = await executePolicy({ query, debugLog });
   if (!policyResult?.success || !Array.isArray(policyResult.successes) || policyResult.successes.length === 0) {
     debugLog(`Skipping companion output because no provider succeeded for query "${query}"`);
@@ -78,6 +116,18 @@ async function buildMcpCompanionHookOutput(data, options = {}) {
     successes: policyResult.successes || [],
     failures: policyResult.failures || [],
   });
+
+  if (eventName === 'PostToolUseFailure') {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PostToolUseFailure',
+        additionalContext: formatFailureAdditionalContext({
+          originalError: data?.error,
+          companionOutput,
+        }),
+      },
+    };
+  }
 
   return {
     hookSpecificOutput: {

@@ -1,9 +1,9 @@
 # Claude Code Web Hooks - Design
 
-> **Current Version:** 0.1.7
+> **Current Version:** 0.1.8
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-04-05
 
 ---
 
@@ -59,7 +59,7 @@ The current implementation goal is:
 - stabilize the multi-provider WebSearch architecture across WebSearchAPI.ai, Tavily Search, and Exa Search
 - keep WebFetch extraction on the current three-backend fallback path
 - extend the runtime-compatibility layer across Claude Code, Copilot on VS Code, and Copilot CLI without changing the shared provider core
-- support CCS MCP coexistence so one `mcp__ccs-websearch__WebSearch` run can keep the original CCS result while also surfacing a second `claude-code-web-hooks` companion result
+- support CCS MCP coexistence so one `mcp__ccs-websearch__WebSearch` run can keep the original CCS result while also surfacing a second `claude-code-web-hooks` companion result, and failed CCS MCP runs can still surface provider-backed fallback context from this repo
 
 ---
 
@@ -70,6 +70,7 @@ The current implementation goal is:
 - Claude Code `PreToolUse` hook for `WebFetch`
 - Optional Claude Code `PreToolUse` pass-through matcher for `mcp__ccs-websearch__WebSearch`
 - Optional Claude Code `PostToolUse` companion matcher for `mcp__ccs-websearch__WebSearch`
+- Optional Claude Code `PostToolUseFailure` fallback matcher for `mcp__ccs-websearch__WebSearch`
 - Search augmentation using WebSearchAPI.ai, Tavily Search, and Exa Search
 - Auto-detection for fetch-readable vs CSR-heavy pages before scraper fallback
 - Optional key-pool support for multiple API keys
@@ -106,14 +107,16 @@ Role:
 - when one or more supported provider keys exist, perform custom search substitution through provider policy
 - when no provider key exists, exit cleanly and allow native WebSearch flow to continue
 - if the tool event is `mcp__ccs-websearch__WebSearch`, do not take ownership in `PreToolUse`; allow the CCS MCP tool to continue normally
-- after the CCS MCP tool finishes, optionally build a second provider-backed companion result and replace the visible MCP output with a combined original-plus-companion payload
+- after a successful CCS MCP tool run, optionally build a second provider-backed companion result and replace the visible MCP output with a combined original-plus-companion payload
+- after a failed CCS MCP tool run, optionally build provider-backed fallback context and attach it through `PostToolUseFailure -> additionalContext`
 
 Contract:
 - native `WebSearch` = source-discovery substitution path owned by this project
 - `mcp__ccs-websearch__WebSearch` = optional coexistence path where CCS still executes the MCP search
 - `PreToolUse` on the MCP path = allow-only pass-through
 - `PostToolUse` on the MCP path = optional MCP-output replacement that preserves the original CCS MCP result and appends a clearly labeled `claude-code-web-hooks` companion result
-- return concise search results and sources only for the native `WebSearch` substitution path or the explicit MCP companion block
+- `PostToolUseFailure` on the MCP path = optional failure-fallback context that preserves the CCS MCP error as checked context and adds provider-backed fallback results through `additionalContext`
+- return concise search results and sources only for the native `WebSearch` substitution path or the explicit MCP companion/failure-fallback blocks
 - do not force scraping in this layer
 
 #### 2) WebFetch hook
@@ -269,7 +272,7 @@ Manual installation:
 - place scripts under `~/.claude/hooks/`
 - merge hook entries into `~/.claude/settings.json`
 - keep env management external/user-controlled
-- if CCS MCP coexistence is enabled, add both the `PreToolUse` pass-through matcher and the matching `PostToolUse` companion matcher for `mcp__ccs-websearch__WebSearch`
+- if CCS MCP coexistence is enabled, add the `PreToolUse` pass-through matcher plus matching `PostToolUse` and `PostToolUseFailure` companion/failure-fallback matchers for `mcp__ccs-websearch__WebSearch`
 
 ### Phase 2
 Provide installer utility:
@@ -411,6 +414,7 @@ If you do not set `WEBSEARCHAPI_API_KEY`:
 - overly noisy hook messages if every allow-through is surfaced
 - key delimiter ambiguity if API keys themselves contain `-`
 - duplicated hooks in settings leading to confusing output
+- overclaiming failed-run MCP output replacement when the current Claude Code docs only document `updatedMCPToolOutput` for successful `PostToolUse`
 
 ### Behavioral constraints
 - hooks only work in runtimes that support Claude Code hook events

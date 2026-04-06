@@ -118,6 +118,18 @@ if (settings.hooks && Array.isArray(settings.hooks.PostToolUse)) {
   });
 }
 
+if (settings.hooks && Array.isArray(settings.hooks.PostToolUseFailure)) {
+  settings.hooks.PostToolUseFailure = settings.hooks.PostToolUseFailure.filter((entry) => {
+    if (!entry || !Array.isArray(entry.hooks) || typeof entry.matcher !== 'string') return true;
+    const commands = entry.hooks
+      .filter((hook) => hook && hook.type === 'command' && typeof hook.command === 'string')
+      .map((hook) => hook.command);
+
+    const ownsWebSearchMcpFailureFallback = removeCcsMcpPassThrough && entry.matcher === 'mcp__ccs-websearch__WebSearch' && commands.some((cmd) => cmd.includes('websearch-mcp-companion.cjs'));
+    return !ownsWebSearchMcpFailureFallback;
+  });
+}
+
 fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
 NODE
 fi
@@ -136,6 +148,8 @@ if [ "$REMOVE_CLAUDE" -eq 1 ]; then
     printf '  - %s\n' "${WEBSEARCH_MCP_PASS_THROUGH_DST}"
     printf 'Removed optional CCS MCP PostToolUse companion hook if present:\n'
     printf '  - %s\n' "${WEBSEARCH_MCP_COMPANION_DST}"
+    printf 'Removed optional CCS MCP PostToolUseFailure fallback hook if present through settings cleanup:\n'
+    printf '  - matcher: mcp__ccs-websearch__WebSearch\n'
   fi
   printf 'Removed Claude Code shared helpers if present:\n'
   printf '  - %s\n' "${FAILURE_POLICY_DST}"

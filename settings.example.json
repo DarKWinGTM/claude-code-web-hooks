@@ -48,6 +48,18 @@
             }
           ]
         }
+      ],
+      "PostToolUseFailure": [
+        {
+          "matcher": "mcp__ccs-websearch__WebSearch",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "node \"/ABSOLUTE/PATH/TO/claude-code-web-hooks/hooks/websearch-mcp-companion.cjs\"",
+              "timeout": 120
+            }
+          ]
+        }
       ]
     }
   },

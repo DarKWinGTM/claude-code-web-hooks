@@ -82,6 +82,7 @@ const summary = {
   claudeHookCount: Array.isArray(settings?.hooks?.PreToolUse) ? settings.hooks.PreToolUse.length : 0,
   ccsMcpPreToolUseHookCount: 0,
   ccsMcpPostToolUseHookCount: 0,
+  ccsMcpPostToolUseFailureHookCount: 0,
   copilotUserHookCount: 0,
   copilotCliHookCount: 0,
 };
@@ -98,6 +99,11 @@ if (!Array.isArray(ccsMcpPostToolUse) || ccsMcpPostToolUse.length < 1) {
   throw new Error('settings.example.json missing CCS MCP companion PostToolUse hook example');
 }
 summary.ccsMcpPostToolUseHookCount = ccsMcpPostToolUse.length;
+const ccsMcpPostToolUseFailure = settings?.ccsMcpHooksExample?.hooks?.PostToolUseFailure;
+if (!Array.isArray(ccsMcpPostToolUseFailure) || ccsMcpPostToolUseFailure.length < 1) {
+  throw new Error('settings.example.json missing CCS MCP failure-fallback PostToolUseFailure hook example');
+}
+summary.ccsMcpPostToolUseFailureHookCount = ccsMcpPostToolUseFailure.length;
 if (verifyCopilotVsCode) {
   const preToolUse = settings?.copilotHooksExample?.hooks?.preToolUse;
   if (settings?.copilotHooksExample?.version !== 1 || !Array.isArray(preToolUse) || preToolUse.length < 2) {
@@ -210,15 +216,24 @@ const { spawnSync } = require('child_process');
 const { buildMcpCompanionHookOutput } = require(path.join(process.env.PROJECT_DIR_ENV, 'hooks/websearch-mcp-companion.cjs'));
 const projectDir = process.env.PROJECT_DIR_ENV;
 const passThroughScriptPath = path.join(projectDir, 'hooks/websearch-mcp-pass-through.cjs');
-const payload = {
+const successPayload = {
   tool_name: 'mcp__ccs-websearch__WebSearch',
+  hook_event_name: 'PostToolUse',
   tool_input: {
     query: 'latest ccs docs',
   },
   tool_response: 'Provider: DuckDuckGo\nResult count: 1\n1. CCS result\nURL: https://example.com/ccs\n',
 };
+const failurePayload = {
+  tool_name: 'mcp__ccs-websearch__WebSearch',
+  hook_event_name: 'PostToolUseFailure',
+  tool_input: {
+    query: 'latest ccs docs',
+  },
+  error: 'CCS local WebSearch failed ... DuckDuckGo returned non-result HTML response (possible anti-bot/challenge page) (status 202)',
+};
 const child = spawnSync('node', [passThroughScriptPath], {
-  input: JSON.stringify(payload),
+  input: JSON.stringify(successPayload),
   encoding: 'utf8',
   env: process.env,
 });
@@ -232,31 +247,33 @@ if (parsed?.hookSpecificOutput?.permissionDecisionReason) {
 }
 
 (async () => {
-  const companion = await buildMcpCompanionHookOutput(payload, {
+  const executePolicy = async ({ query }) => ({
+    success: true,
+    successes: [
+      {
+        provider: 'tavily',
+        providerLabel: 'Tavily',
+        query,
+        items: [
+          {
+            title: 'Companion result',
+            url: 'https://example.com/companion',
+            summary: 'companion summary',
+          },
+        ],
+      },
+    ],
+    failures: [
+      {
+        provider: 'websearchapi',
+        error: 'quota exceeded',
+      },
+    ],
+  });
+
+  const companion = await buildMcpCompanionHookOutput(successPayload, {
     searchProvidersConfigured: true,
-    executePolicy: async () => ({
-      success: true,
-      successes: [
-        {
-          provider: 'tavily',
-          providerLabel: 'Tavily',
-          query: payload.tool_input.query,
-          items: [
-            {
-              title: 'Companion result',
-              url: 'https://example.com/companion',
-              summary: 'companion summary',
-            },
-          ],
-        },
-      ],
-      failures: [
-        {
-          provider: 'websearchapi',
-          error: 'quota exceeded',
-        },
-      ],
-    }),
+    executePolicy,
   });
 
   if (!companion?.hookSpecificOutput?.updatedMCPToolOutput) {
@@ -275,7 +292,27 @@ if (parsed?.hookSpecificOutput?.permissionDecisionReason) {
     throw new Error('CCS MCP companion output did not include companion search content');
   }
 
-  const skipped = await buildMcpCompanionHookOutput(payload, {
+  const failureCompanion = await buildMcpCompanionHookOutput(failurePayload, {
+    searchProvidersConfigured: true,
+    executePolicy,
+  });
+  if (!failureCompanion?.hookSpecificOutput?.additionalContext) {
+    throw new Error('CCS MCP failure companion hook did not return additionalContext');
+  }
+  if (failureCompanion?.hookSpecificOutput?.hookEventName !== 'PostToolUseFailure') {
+    throw new Error('CCS MCP failure companion hook did not identify itself as PostToolUseFailure');
+  }
+  if (!failureCompanion.hookSpecificOutput.additionalContext.includes('[claude-code-web-hooks Failure Fallback]')) {
+    throw new Error('CCS MCP failure fallback did not emit failure fallback context');
+  }
+  if (!failureCompanion.hookSpecificOutput.additionalContext.includes('[Original CCS MCP Error]')) {
+    throw new Error('CCS MCP failure fallback did not preserve original error context');
+  }
+  if (!failureCompanion.hookSpecificOutput.additionalContext.includes('[claude-code-web-hooks Fallback Result]')) {
+    throw new Error('CCS MCP failure fallback did not include fallback result section');
+  }
+
+  const skipped = await buildMcpCompanionHookOutput(successPayload, {
     searchProvidersConfigured: false,
   });
   if (skipped !== null) {
@@ -285,7 +322,8 @@ if (parsed?.hookSpecificOutput?.permissionDecisionReason) {
   console.log(JSON.stringify({
     passThroughStatus: child.status,
     permissionDecision: parsed.hookSpecificOutput.permissionDecision,
-    companionOutputMode: 'updatedMCPToolOutput',
+    successCompanionOutputMode: 'updatedMCPToolOutput',
+    failureCompanionOutputMode: 'additionalContext',
   }, null, 2));
 })();
 NODE

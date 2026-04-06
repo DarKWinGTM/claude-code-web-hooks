@@ -1,9 +1,28 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.7
+> **Current Version:** 0.1.8
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-04-05
+
+---
+
+## Version 0.1.8 - 2026-04-05
+
+### Added
+- Added `PostToolUseFailure` fallback handling for `mcp__ccs-websearch__WebSearch` through the existing `hooks/websearch-mcp-companion.cjs` flow
+- Added optional `PostToolUseFailure` example config in `settings.example.json` for the CCS MCP coexistence hook set
+
+### Updated
+- Updated the CCS MCP companion hook so successful MCP runs still use `updatedMCPToolOutput`, while failed MCP runs now attach provider-backed fallback context through `additionalContext`
+- Updated install/uninstall flow to support the optional CCS MCP coexistence hook set (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`) instead of only the success-side pair
+- Updated verification coverage to prove failed CCS MCP runs can still surface repo fallback context without claiming failed-run MCP output replacement support
+- Updated README, design, TODO, phase, and patch wording to reflect the bounded failure-side contract
+
+### Notes
+- Successful CCS MCP runs still preserve the original CCS result first and append the repo companion result second
+- Failed CCS MCP runs now attach repo fallback context through `PostToolUseFailure -> additionalContext`
+- This version intentionally does not claim failed-run `updatedMCPToolOutput` support because the checked Claude Code hook docs only document that field for successful `PostToolUse`
 
 ---
 
