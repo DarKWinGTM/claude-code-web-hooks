@@ -305,11 +305,20 @@ if (parsed?.hookSpecificOutput?.permissionDecisionReason) {
   if (!failureCompanion.hookSpecificOutput.additionalContext.includes('[claude-code-web-hooks Failure Fallback]')) {
     throw new Error('CCS MCP failure fallback did not emit failure fallback context');
   }
+  if (!failureCompanion.hookSpecificOutput.additionalContext.includes('Use the fallback result below as the replacement search context for this turn.')) {
+    throw new Error('CCS MCP failure fallback did not include the result-first summary guidance');
+  }
   if (!failureCompanion.hookSpecificOutput.additionalContext.includes('[Original CCS MCP Error]')) {
     throw new Error('CCS MCP failure fallback did not preserve original error context');
   }
   if (!failureCompanion.hookSpecificOutput.additionalContext.includes('[claude-code-web-hooks Fallback Result]')) {
     throw new Error('CCS MCP failure fallback did not include fallback result section');
+  }
+  if (
+    failureCompanion.hookSpecificOutput.additionalContext.indexOf('[claude-code-web-hooks Fallback Result]') >
+    failureCompanion.hookSpecificOutput.additionalContext.indexOf('[Original CCS MCP Error]')
+  ) {
+    throw new Error('CCS MCP failure fallback did not surface the fallback result before the original error block');
   }
 
   const skipped = await buildMcpCompanionHookOutput(successPayload, {

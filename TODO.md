@@ -1,6 +1,6 @@
 # Claude Code Web Hooks - TODO
 
-> **Last Updated:** 2026-04-05
+> **Last Updated:** 2026-04-10
 
 ---
 
@@ -33,7 +33,7 @@
 
 ### Behavior / Quality
 - [x] Improve API key pool format to avoid delimiter ambiguity
-- [ ] Reduce noisy hook messaging while preserving decision visibility
+- [x] Reduce noisy hook messaging while preserving decision visibility
 - [x] Make `parallel` mode return all successful provider results and report partial failures
 - [x] Add domain heuristics for better WebFetch scrape escalation decisions
 - [x] Refine WebFetch low-text structured portal detection so template-heavy pages with repeated metadata blocks do not fall through as `fetch-readable`
@@ -82,6 +82,7 @@
 
 | Date | Changes |
 |------|---------|
+| 2026-04-10 | Reworked the CCS MCP failure fallback block into a result-first layout so the fallback search result appears before the preserved raw CCS error, extended verification to assert the new summary text and section order, and synced the governed docs/TODO wording to the new visibility contract. |
 | 2026-04-05 | Extended CCS MCP coexistence so failed MCP runs now also trigger repo fallback context: `websearch-mcp-companion.cjs` now handles `PostToolUseFailure`, install/settings examples now include the failure-side matcher, verification covers both success-side dual output and failure-side fallback context, and the governed docs/phase/patch set was synced to that bounded contract. |
 | 2026-04-04 | Extended CCS MCP coexistence from allow-only pass-through into a dual-output model: added a `PostToolUse` companion hook that preserves the original CCS MCP result and appends a `claude-code-web-hooks` companion result via `updatedMCPToolOutput`, then synced install/uninstall/settings/verify/docs/phase artifacts to the new contract. |
 | 2026-03-28 | Implemented and verified the narrow WebFetch heuristic refinement for low-text structured portal pages, then completed the three-backend WebFetch extraction rollout in repo state: added interchangeable extraction backends for WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents; added one-active-backend-per-request selection with ordered fallback; updated install/uninstall/settings/verify/docs/phase files; completed real-key smoke testing for Tavily Extract and Exa Contents plus ordered fallback behavior; and staged then implemented target-aware install / uninstall / verify support for the multiple-target model (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`) including Copilot compatibility wrappers and Copilot CLI repo-hook support. |

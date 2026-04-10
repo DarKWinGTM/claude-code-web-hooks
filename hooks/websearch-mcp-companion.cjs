@@ -57,19 +57,18 @@ function formatFailureAdditionalContext({ originalError, companionOutput }) {
   const lines = [
     '[claude-code-web-hooks Failure Fallback]',
     '',
-    'The original CCS MCP WebSearch run failed, so claude-code-web-hooks executed its own provider-backed fallback search.',
+    'CCS MCP WebSearch failed.',
+    'claude-code-web-hooks ran a provider-backed fallback search for the same query.',
+    'Use the fallback result below as the replacement search context for this turn.',
+    '',
+    '[claude-code-web-hooks Fallback Result]',
+    '',
+    companionText || 'No fallback search result was returned.',
   ];
 
   if (errorText) {
     lines.push('', '[Original CCS MCP Error]', '', errorText);
   }
-
-  lines.push(
-    '',
-    '[claude-code-web-hooks Fallback Result]',
-    '',
-    companionText || 'No fallback search result was returned.'
-  );
 
   return lines.join('\n').trim();
 }

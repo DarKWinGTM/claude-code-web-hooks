@@ -78,7 +78,7 @@ Target state
 | P7 | `phase-007-stage-webfetch-scraping-content-extraction-design.md` | Approved | None | Approved As-Is | design slice staged and first bounded capability comparison recorded |
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | Approved | None | Approved As-Is | completed |
 | P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved | None | Approved As-Is | completed |
-| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | Approved | None | Approved As-Implemented | implementation and verification now cover success-side dual output plus failure-side fallback context |
+| P10 | `phase-010-stage-websearch-mcp-coexistence.md` | Approved | None | Approved As-Implemented | implementation and verification now cover success-side dual output plus failure-side fallback context with result-first fallback visibility |
 
 ---
 
@@ -125,6 +125,7 @@ End-to-end success should show:
   - the original CCS MCP result remains visible first inside that combined payload
   - the appended companion section contains provider-backed results from this repo
   - failed CCS MCP runs can still trigger repo fallback context through `PostToolUseFailure -> additionalContext`
+  - the failed-run fallback block surfaces the repo fallback result before the preserved raw CCS error
   - the MCP path does not trigger duplicate provider execution before the original CCS run completes
 - docs and verification scripts now reflect the shipped behavior
 

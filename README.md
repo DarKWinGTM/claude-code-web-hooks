@@ -454,7 +454,8 @@ Coexistence contract:
 - the `PostToolUse` hook replaces the visible MCP tool output with a combined payload that preserves the original CCS MCP result first and appends the `claude-code-web-hooks` companion result second
 - the optional `PostToolUseFailure` matcher builds provider-backed fallback context from this repo for failed MCP runs
 - on failed MCP runs, the repo currently adds fallback material through `additionalContext` rather than pretending it can replace failed MCP output, because the current Claude Code docs only document `updatedMCPToolOutput` for successful `PostToolUse`
-- this means one successful MCP run can surface both outputs together without blocking CCS execution first, while failed MCP runs can still attach repo fallback context
+- the failed-run fallback block is intentionally rendered in a result-first order so the fallback search result appears before the preserved raw CCS error
+- this means one successful MCP run can surface both outputs together without blocking CCS execution first, while failed MCP runs can still attach a more visible repo fallback block
 
 ### 3) Configure API keys
 The project currently uses **separate provider keys**:

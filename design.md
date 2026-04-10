@@ -1,9 +1,9 @@
 # Claude Code Web Hooks - Design
 
-> **Current Version:** 0.1.8
+> **Current Version:** 0.1.9
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft
-> **Last Updated:** 2026-04-05
+> **Last Updated:** 2026-04-10
 
 ---
 
@@ -109,6 +109,7 @@ Role:
 - if the tool event is `mcp__ccs-websearch__WebSearch`, do not take ownership in `PreToolUse`; allow the CCS MCP tool to continue normally
 - after a successful CCS MCP tool run, optionally build a second provider-backed companion result and replace the visible MCP output with a combined original-plus-companion payload
 - after a failed CCS MCP tool run, optionally build provider-backed fallback context and attach it through `PostToolUseFailure -> additionalContext`
+- render that failed-run fallback block in a result-first order so the provider-backed fallback result is more obvious than the preserved raw CCS error
 
 Contract:
 - native `WebSearch` = source-discovery substitution path owned by this project

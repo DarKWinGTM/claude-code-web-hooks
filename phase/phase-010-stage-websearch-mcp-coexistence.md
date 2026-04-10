@@ -31,6 +31,7 @@ The project currently owns native Claude `WebSearch` substitution only. In the c
 - [x] Add `hooks/websearch-mcp-pass-through.cjs` as an allow-only `PreToolUse` MCP companion hook
 - [x] Add `hooks/websearch-mcp-companion.cjs` as a `PostToolUse` MCP-output replacement hook
 - [x] Extend `hooks/websearch-mcp-companion.cjs` so failed CCS MCP runs can also emit provider-backed fallback context through `PostToolUseFailure`
+- [x] Refine the failed-run fallback block into a result-first layout so the repo fallback result appears before the preserved raw CCS error
 - [x] Extend install/uninstall/settings support for the optional MCP coexistence hook set
 - [x] Add verify coverage for pass-through / preserved-original-output / appended-companion-output / failure-fallback behavior
 - [x] Sync README / design / changelog / TODO / phase / patch wording
@@ -75,6 +76,7 @@ The project currently owns native Claude `WebSearch` substitution only. In the c
 - the `PostToolUse` companion path preserves the original CCS MCP output first
 - the `PostToolUse` companion path appends a clearly labeled provider-backed companion result second
 - the `PostToolUseFailure` path appends provider-backed fallback context through `additionalContext` when the original CCS MCP run fails
+- the failed-run fallback block surfaces the repo fallback result before the preserved raw CCS error
 - no duplicate provider execution is introduced before the original CCS MCP run completes
 
 ## Exit criteria

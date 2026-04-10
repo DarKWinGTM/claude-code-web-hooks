@@ -1,9 +1,23 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.8
+> **Current Version:** 0.1.9
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
-> **Last Updated:** 2026-04-05
+> **Last Updated:** 2026-04-10
+
+---
+
+## Version 0.1.9 - 2026-04-10
+
+### Updated
+- Updated `hooks/websearch-mcp-companion.cjs` so failed CCS MCP runs now render a result-first fallback block that tells the user to read the fallback search result before the preserved raw CCS error
+- Updated `verify.sh` so CCS MCP failure-fallback verification now asserts the new result-first guidance text and confirms the fallback-result section appears before the original-error section
+- Updated README, design, and TODO wording to reflect the stronger failure-fallback visibility contract without changing the existing `PostToolUseFailure -> additionalContext` transport
+
+### Notes
+- Successful CCS MCP runs still use `PostToolUse -> updatedMCPToolOutput`
+- Failed CCS MCP runs still use `PostToolUseFailure -> additionalContext`
+- This version improves visibility only; it does not change MCP ownership or claim failed-run `updatedMCPToolOutput` support
 
 ---
 
