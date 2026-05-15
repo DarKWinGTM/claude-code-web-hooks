@@ -1,5 +1,8 @@
 # Claude Code Web Hooks
 
+> **Current Version:** 0.1.10
+> **Last Updated:** 2026-05-16
+
 Standalone hook-tool project for **Claude Code** with compatibility wrappers for **GitHub Copilot on VS Code** and **GitHub Copilot CLI** that augments two built-in tool paths at the client runtime layer:
 - `WebSearch`
 - `WebFetch`
@@ -54,6 +57,11 @@ This tool increases the practical usefulness of Claude Code in two ways:
   - Tavily Extract
   - Exa Contents
 - Falls through to native WebFetch when custom execution is unavailable or unsuccessful
+
+### Hook decision transport contract
+- successful hook-command completion exits `0`
+- `hookSpecificOutput.permissionDecision` owns whether the native tool continues or is replaced
+- handled substitution / deny paths must not rely on non-zero exit codes, because that would turn a valid hook result into a runtime hook error
 
 ### Current provider targeting
 Current implementation status:

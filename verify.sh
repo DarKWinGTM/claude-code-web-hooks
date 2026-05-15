@@ -157,6 +157,168 @@ if (out.template !== 'template-heavy') throw new Error('template fixture misclas
 if (out.shell !== 'browser-render-required') throw new Error('shell fixture misclassified');
 NODE
 
+printf '\n== Hook decision transport contract ==\n'
+PROJECT_DIR_ENV="${PROJECT_DIR}" node - <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+const { createRequire } = require('module');
+
+function loadHook(filePath, requireOverrides = {}) {
+  const code = fs.readFileSync(filePath, 'utf8');
+  const logs = [];
+  const baseRequire = createRequire(filePath);
+  const sandbox = {
+    require(moduleId) {
+      if (Object.prototype.hasOwnProperty.call(requireOverrides, moduleId)) {
+        return requireOverrides[moduleId];
+      }
+      return baseRequire(moduleId);
+    },
+    console: {
+      log(message) {
+        logs.push(String(message));
+      },
+      error() {},
+    },
+    process: {
+      env: {},
+      stdin: { setEncoding() {}, on() {} },
+      exit(code) {
+        throw { __hookExit: true, code };
+      },
+      cwd: () => path.dirname(path.dirname(filePath)),
+    },
+    Buffer,
+    URL,
+    Math,
+    Set,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(code, sandbox);
+  return { sandbox, logs };
+}
+
+function invokeAndCapture(fn, args, logs) {
+  try {
+    fn(...args);
+  } catch (error) {
+    if (error && error.__hookExit) {
+      if (logs.length === 0) {
+        throw new Error('hook helper exited without JSON output');
+      }
+      return {
+        exitCode: error.code,
+        payload: JSON.parse(logs[0]),
+      };
+    }
+    throw error;
+  }
+  throw new Error('hook helper did not exit');
+}
+
+const projectDir = process.env.PROJECT_DIR_ENV;
+const websearchPath = path.join(projectDir, 'hooks/websearch-custom.cjs');
+const webfetchPath = path.join(projectDir, 'hooks/webfetch-scraper.cjs');
+
+const websearchSuccess = loadHook(websearchPath);
+const websearchSuccessResult = invokeAndCapture(
+  websearchSuccess.sandbox.outputSuccess,
+  [
+    'verify decision contract',
+    {
+      mode: 'parallel',
+      successes: [
+        {
+          provider: 'tavily',
+          providerLabel: 'Tavily',
+          items: [
+            {
+              title: 'Companion result',
+              url: 'https://example.com/companion',
+              summary: 'companion summary',
+            },
+          ],
+        },
+      ],
+      failures: [],
+    },
+  ],
+  websearchSuccess.logs
+);
+if (websearchSuccessResult.exitCode !== 0) {
+  throw new Error('WebSearch success decision did not exit 0');
+}
+if (websearchSuccessResult.payload?.hookSpecificOutput?.permissionDecision !== 'deny') {
+  throw new Error('WebSearch success decision did not deny native tool execution');
+}
+if (!String(websearchSuccessResult.payload?.hookSpecificOutput?.permissionDecisionReason || '').includes('[WebSearch Result via Multi-Provider Search]')) {
+  throw new Error('WebSearch success decision did not emit formatted multi-provider output');
+}
+
+const websearchError = loadHook(websearchPath, {
+  './shared/failure-policy.cjs': {
+    classifyProviderFailure: () => 'fatal-provider-failed',
+    shouldAllowNativeFallback: () => false,
+  },
+});
+const websearchErrorResult = invokeAndCapture(
+  websearchError.sandbox.outputError,
+  ['verify decision contract', 'fatal provider error'],
+  websearchError.logs
+);
+if (websearchErrorResult.exitCode !== 0) {
+  throw new Error('WebSearch deny/error decision did not exit 0');
+}
+if (websearchErrorResult.payload?.hookSpecificOutput?.permissionDecision !== 'deny') {
+  throw new Error('WebSearch deny/error decision did not deny native tool execution');
+}
+if (!String(websearchErrorResult.payload?.hookSpecificOutput?.permissionDecisionReason || '').includes('fatal provider error')) {
+  throw new Error('WebSearch deny/error decision did not preserve the provider error text');
+}
+
+const webfetchSuccess = loadHook(webfetchPath);
+const webfetchSuccessResult = invokeAndCapture(
+  webfetchSuccess.sandbox.outputScrapedSuccess,
+  [
+    'https://example.com/article',
+    'summarize this page',
+    {
+      classification: 'template-heavy',
+      reason: 'template-heavy initial HTML',
+    },
+    {
+      result: {
+        provider: 'tavily',
+        providerLabel: 'Tavily Extract',
+        url: 'https://example.com/article',
+        finalUrl: 'https://example.com/article',
+        title: 'Example article',
+        content: 'Extracted content',
+        contentFormat: 'markdown',
+      },
+      fallbackProviderUsed: false,
+    },
+  ],
+  webfetchSuccess.logs
+);
+if (webfetchSuccessResult.exitCode !== 0) {
+  throw new Error('WebFetch extraction decision did not exit 0');
+}
+if (webfetchSuccessResult.payload?.hookSpecificOutput?.permissionDecision !== 'deny') {
+  throw new Error('WebFetch extraction decision did not deny native tool execution');
+}
+if (!String(webfetchSuccessResult.payload?.hookSpecificOutput?.permissionDecisionReason || '').includes('[WebFetch Result via Tavily Extract]')) {
+  throw new Error('WebFetch extraction decision did not emit formatted extracted output');
+}
+
+console.log(JSON.stringify({
+  websearchSuccessExitCode: websearchSuccessResult.exitCode,
+  websearchErrorExitCode: websearchErrorResult.exitCode,
+  webfetchSuccessExitCode: webfetchSuccessResult.exitCode,
+}, null, 2));
+NODE
+
 printf '\n== Failure policy check ==\n'
 FAILURE_POLICY_PATH="${PROJECT_DIR}/hooks/shared/failure-policy.cjs" node - <<'NODE'
 const { classifyProviderFailure, shouldAllowNativeFallback } = require(process.env.FAILURE_POLICY_PATH);

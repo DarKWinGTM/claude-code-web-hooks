@@ -1,9 +1,9 @@
 # Claude Code Web Hooks - Design
 
-> **Current Version:** 0.1.9
+> **Current Version:** 0.1.10
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft
-> **Last Updated:** 2026-04-10
+> **Last Updated:** 2026-05-16
 
 ---
 
@@ -131,6 +131,23 @@ Role:
 Contract:
 - `WebFetch = URL reading`
 - scraping is an escalation/fallback path, not the default path
+
+## Hook decision transport contract
+
+Handled hook decisions use two separate layers:
+- **hook process outcome** = whether the hook command itself completed successfully
+- **tool decision outcome** = whether the native tool should continue or be replaced
+
+Current contract:
+- exit `0` means the hook command completed successfully
+- `hookSpecificOutput.permissionDecision = "allow"` means the native tool may continue
+- `hookSpecificOutput.permissionDecision = "deny"` means this repo already owns the visible result for that tool event
+- handled substitution / deny paths must not rely on non-zero exit codes just to signal replacement
+- non-zero exit is reserved for actual hook-command failure, not normal handled decision transport
+
+Design implication:
+- a valid JSON decision plus exit `0` is the normal replacement path
+- install/runtime wrappers should preserve that separation instead of turning handled hook decisions into runtime hook failures
 
 ---
 

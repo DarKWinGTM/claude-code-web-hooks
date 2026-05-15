@@ -1,6 +1,6 @@
 # Claude Code Web Hooks - TODO
 
-> **Last Updated:** 2026-04-10
+> **Last Updated:** 2026-05-16
 
 ---
 
@@ -38,6 +38,7 @@
 - [x] Add domain heuristics for better WebFetch scrape escalation decisions
 - [x] Refine WebFetch low-text structured portal detection so template-heavy pages with repeated metadata blocks do not fall through as `fetch-readable`
 - [x] Add tests or repeatable verification flow for hook decision branches
+- [x] Normalize hook decision transport so handled `deny` / substitution paths exit `0` and are verifier-covered
 
 ### Multi-provider roadmap
 - [x] Add search provider abstraction layer
@@ -82,6 +83,7 @@
 
 | Date | Changes |
 |------|---------|
+| 2026-05-16 | Normalized the handled hook decision transport contract so `WebSearch` and `WebFetch` deny/substitution paths exit `0`, added repeatable verifier coverage for the decision-output contract, and synced the governed source docs/phase/patch surfaces before reinstalling from source. |
 | 2026-04-10 | Reworked the CCS MCP failure fallback block into a result-first layout so the fallback search result appears before the preserved raw CCS error, extended verification to assert the new summary text and section order, and synced the governed docs/TODO wording to the new visibility contract. |
 | 2026-04-05 | Extended CCS MCP coexistence so failed MCP runs now also trigger repo fallback context: `websearch-mcp-companion.cjs` now handles `PostToolUseFailure`, install/settings examples now include the failure-side matcher, verification covers both success-side dual output and failure-side fallback context, and the governed docs/phase/patch set was synced to that bounded contract. |
 | 2026-04-04 | Extended CCS MCP coexistence from allow-only pass-through into a dual-output model: added a `PostToolUse` companion hook that preserves the original CCS MCP result and appends a `claude-code-web-hooks` companion result via `updatedMCPToolOutput`, then synced install/uninstall/settings/verify/docs/phase artifacts to the new contract. |

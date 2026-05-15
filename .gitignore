@@ -3,5 +3,6 @@ backups/
 apikey.json
 apikeys.txt
 .claude/
+.memsearch/
 node_modules/
 .DS_Store

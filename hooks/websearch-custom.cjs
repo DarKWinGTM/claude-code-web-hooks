@@ -43,8 +43,7 @@
  *   CLAUDE_WEB_HOOKS_DEBUG=1                - Enable debug output
  *
  * Exit codes:
- *   0 - Allow tool / fall through to native WebSearch
- *   2 - Block tool and return hook-provided results
+ *   0 - Hook command completed successfully; JSON controls allow/deny behavior
  */
 
 const { classifyProviderFailure, shouldAllowNativeFallback } = require('./shared/failure-policy.cjs');
@@ -82,7 +81,7 @@ function outputSuccess(query, policyResult) {
   };
 
   console.log(JSON.stringify(output));
-  process.exit(2);
+  process.exit(0);
 }
 
 function outputAllowContinuation(message, additionalContext) {
@@ -125,7 +124,7 @@ function outputError(query, error) {
   };
 
   console.log(JSON.stringify(output));
-  process.exit(2);
+  process.exit(0);
 }
 
 let input = '';

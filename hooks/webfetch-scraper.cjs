@@ -33,8 +33,7 @@
  *   CLAUDE_WEB_HOOKS_DEBUG=1                          - Enable debug logging
  *
  * Exit codes:
- *   0 - Allow tool / fall through to native WebFetch
- *   2 - Block tool and return hook-provided scraped content
+ *   0 - Hook command completed successfully; JSON controls allow/deny behavior
  */
 
 const http = require('http');
@@ -45,7 +44,6 @@ const { executeExtractProviderPolicy } = require('./shared/extract-provider-poli
 const { formatExtractProviderResult } = require('./shared/extract-provider-contract.cjs');
 
 const DEFAULT_FETCH_TIMEOUT_SEC = 12;
-const DEFAULT_SCRAPER_API_TIMEOUT_SEC = 25;
 const DEFAULT_MAX_HTML_BYTES = 262144;
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const TEMPLATE_HEAVY_HOSTS = [
@@ -251,7 +249,7 @@ function outputScrapedSuccess(url, prompt, detection, policyResult) {
   };
 
   console.log(JSON.stringify(output));
-  process.exit(2);
+  process.exit(0);
 }
 
 function outputAllowContinuation(message) {

@@ -1,9 +1,9 @@
 # WebSearch MCP Coexistence Patch
 
-> **Current Version:** 0.2.1
+> **Current Version:** 0.1.10
 > **Session:** 5abadc67-2a78-4337-97bd-a2a5fadd4e47
-> **Status:** Draft
-> **Target Design:** `design.md` v0.1.8
+> **Status:** Completed
+> **Target Design:** `design.md` v0.1.10
 > **Full history:** `changelog.md`
 
 ---
@@ -63,12 +63,12 @@ The repo needs an explicit coexistence contract so support for the CCS MCP path 
 ## Verification
 - run `./verify.sh --target claude-code`
 - run `./verify.sh --target all`
-- manually confirm native `WebSearch` substitution still works
-- manually confirm `mcp__ccs-websearch__WebSearch` continues normally without hook blocking
-- manually confirm one successful MCP run can show both:
+- confirm native `WebSearch` substitution still works in local verification
+- confirm `mcp__ccs-websearch__WebSearch` continues normally without hook blocking
+- confirm one successful MCP run can show both:
   - the original CCS MCP result
   - the appended `claude-code-web-hooks` companion result
-- manually confirm a failed MCP run can still attach:
+- confirm a failed MCP run can still attach:
   - the original CCS MCP error as checked context
   - provider-backed fallback context from `claude-code-web-hooks`
 

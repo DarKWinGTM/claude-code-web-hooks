@@ -1,9 +1,23 @@
 # Claude Code Web Hooks - Changelog
 
-> **Current Version:** 0.1.9
+> **Current Version:** 0.1.10
 > **Project:** Claude Code Web Hooks
 > **Status:** Active Draft History
-> **Last Updated:** 2026-04-10
+> **Last Updated:** 2026-05-16
+
+---
+
+## Version 0.1.10 - 2026-05-16
+
+### Updated
+- Updated `hooks/webfetch-scraper.cjs` so handled extraction substitution emits the same deny/replacement JSON contract but exits `0` instead of surfacing as a hook-command failure
+- Updated `hooks/websearch-custom.cjs` so handled success and handled deny/error decisions now exit `0` while keeping tool ownership in `hookSpecificOutput.permissionDecision`
+- Updated `verify.sh` to assert the hook decision transport contract directly for handled `WebSearch` success, handled `WebSearch` deny/error, and handled `WebFetch` substitution paths
+- Updated README, design, TODO, phase, and patch surfaces to describe the normalized source-owned contract and source-first reinstall path
+
+### Notes
+- Non-zero exit codes are now reserved for actual hook-command failure rather than normal handled decision transport
+- Source verification now catches the checked regression class before runtime reinstall
 
 ---
 

@@ -3,7 +3,7 @@
 > **Project:** Claude Code Web Hooks
 > **Scope:** Multi-provider WebSearch + WebFetch rollout with Claude Code, Copilot on VS Code, and Copilot CLI compatibility
 > **Status:** In Progress
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-05-16
 
 ---
 
@@ -15,6 +15,7 @@ The shipped goal now includes:
 - configurable multi-provider WebSearch across WebSearchAPI.ai, Tavily Search, and Exa Search
 - three interchangeable WebFetch extraction backends across WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents
 - preserved native fallback for both WebSearch and WebFetch
+- normalized hook decision transport so handled allow/deny/substitution paths complete with exit `0` and keep tool ownership in JSON
 - explicit runtime compatibility across:
   - `claude-code`
   - `copilot-vscode`
@@ -38,6 +39,7 @@ The shipped goal now includes:
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | `design.md` section: WebFetch extraction backends | none | Implement selectable WebFetch extraction backends across WebSearchAPI.ai Scrape, Tavily Extract, and Exa Contents with one active backend per request and ordered fallback | Three interchangeable extraction backends are available from the first runtime implementation |
 | P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | `README.md` section: How to install; `design.md` section: Installation Model | none | Define target-aware install / uninstall / verify support across multiple runtime targets (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`) and stage Copilot compatibility wrappers/config placement | Future installation/runtime compatibility can expand beyond Claude Code without freezing the model at only two targets |
 | P10 | `phase-010-stage-websearch-mcp-coexistence.md` | `design.md` sections: WebSearch hook, Fallback Philosophy, Installation Model | `patch/websearch-mcp-coexistence.patch.md` | Add explicit non-blocking coexistence support for `mcp__ccs-websearch__WebSearch` while preserving exact native `WebSearch` substitution ownership, appending a second companion result after MCP completion, and surfacing provider-backed fallback context when CCS MCP search fails | Native WebSearch and CCS MCP WebSearch can coexist without blocking, while successful MCP runs can show both the original CCS result and the repo companion result, and failed MCP runs can still surface repo fallback context |
+| P11 | `phase-011-normalize-hook-decision-transport-contract.md` | `design.md` sections: WebSearch hook, WebFetch hook, Hook decision transport contract, Installation Model | `patch/hook-decision-transport-contract.patch.md` | Normalize handled hook decision transport so successful allow/deny/substitution paths exit `0`, add verifier coverage for the regression class, and sync source-owned install/docs surfaces before reinstall | Handled hook decisions no longer surface as hook-command failures, and verification catches the contract regression before runtime install |
 
 ---
 
@@ -61,6 +63,8 @@ Target state
   → bounded capability comparison captured
   → future multiple-target install/runtime compatibility staged (`claude-code`, `copilot-vscode`, `copilot-cli`, `all`)
   → docs + verification updated
+  → handled hook decision transport normalized to exit `0` with JSON-owned allow/deny behavior
+  → source-driven reinstall closes runtime drift
 ```
 
 ---
@@ -79,6 +83,7 @@ Target state
 | P8 | `phase-008-implement-selected-webfetch-extraction-backend.md` | Approved | None | Approved As-Is | completed |
 | P9 | `phase-009-stage-multiple-target-install-and-runtime-compatibility.md` | Approved | None | Approved As-Is | completed |
 | P10 | `phase-010-stage-websearch-mcp-coexistence.md` | Approved | None | Approved As-Implemented | implementation and verification now cover success-side dual output plus failure-side fallback context with result-first fallback visibility |
+| P11 | `phase-011-normalize-hook-decision-transport-contract.md` | Local verification complete | None in checked scope | Self-verified | `verify.sh --target claude-code` and `verify.sh --target all` passed; runtime reinstall and source/runtime parity now confirm the exit-`0` transport contract in checked local scope |
 
 ---
 
@@ -96,6 +101,7 @@ Target state
 - P9 is complete and adds target-aware install / uninstall / verify support for multiple runtime targets rather than freezing the model at only two targets.
 - Current P9 expansion now covers Copilot on VS Code and Copilot CLI through the same wrapper pair, with VS Code user-hook config and repo-scoped Copilot CLI hook config kept explicit.
 - P10 is complete and adds an explicit coexistence boundary for the CCS MCP WebSearch tool so the project can recognize `mcp__ccs-websearch__WebSearch` without taking ownership of that MCP path, while still appending a second provider-backed companion result after CCS finishes the MCP search and adding provider-backed fallback context through `PostToolUseFailure` when CCS MCP search fails.
+- P11 is complete in local repo state and normalizes the handled hook decision transport contract so `WebSearch` success/deny decisions and `WebFetch` substitution decisions exit `0`, remain JSON-owned through `permissionDecision`, and are now verifier-covered before runtime reinstall.
 - Native fallback policy must remain preserved through every phase.
 
 ---
@@ -127,6 +133,10 @@ End-to-end success should show:
   - failed CCS MCP runs can still trigger repo fallback context through `PostToolUseFailure -> additionalContext`
   - the failed-run fallback block surfaces the repo fallback result before the preserved raw CCS error
   - the MCP path does not trigger duplicate provider execution before the original CCS run completes
+- handled hook decision transport verification must confirm:
+  - handled `WebSearch` success exits `0` and still returns `permissionDecision: "deny"`
+  - handled `WebSearch` deny/error exits `0` and still preserves formatted replacement/error text
+  - handled `WebFetch` substitution exits `0` and still returns formatted extracted content
 - docs and verification scripts now reflect the shipped behavior
 
 ---
